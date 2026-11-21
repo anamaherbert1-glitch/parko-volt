@@ -74,14 +74,33 @@ interface ParkoDao {
     @Query("SELECT * FROM parking_sessions WHERE parkingId = :parkingId ORDER BY entryTime DESC")
     fun observeParkingSessions(parkingId: String): Flow<List<ParkingSessionEntity>>
 
+    @Query("SELECT * FROM parking_sessions WHERE UPPER(referenceCode) = UPPER(:ref) LIMIT 1")
+    suspend fun findSessionByReference(ref: String): ParkingSessionEntity?
+
+    @Query("SELECT * FROM parking_sessions WHERE parkingId = :parkingId AND (UPPER(qrToken) = UPPER(:token) OR UPPER(referenceCode) = UPPER(:token) OR UPPER(referenceCode) = UPPER(:withPrefix)) LIMIT 1")
+    suspend fun findParkingSessionByQrOrRef(parkingId: String, token: String, withPrefix: String): ParkingSessionEntity?
+
     @Query("SELECT * FROM parking_sessions WHERE UPPER(qrToken) = UPPER(:token) OR UPPER(referenceCode) = UPPER(:token) OR UPPER(referenceCode) = UPPER(:withPrefix) LIMIT 1")
     suspend fun findSessionByQrOrRef(token: String, withPrefix: String): ParkingSessionEntity?
 
     @Query("SELECT * FROM parking_sessions WHERE id = :sessionId LIMIT 1")
     suspend fun getSessionById(sessionId: String): ParkingSessionEntity?
 
+    @Query("SELECT * FROM parking_sessions WHERE parkingId = :parkingId AND UPPER(plateNumber) = UPPER(:plate) AND status IN ('ACTIVE', 'EXIT_PENDING', 'NEEDS_VERIFICATION') LIMIT 1")
+    suspend fun findActiveSessionByPlateInParking(parkingId: String, plate: String): ParkingSessionEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertSession(session: ParkingSessionEntity)
+
+    // Exceptional Recoveries
+    @Query("SELECT * FROM exceptional_recoveries WHERE parkingId = :parkingId ORDER BY createdAt DESC")
+    fun observeParkingRecoveries(parkingId: String): Flow<List<ExceptionalRecoveryEntity>>
+
+    @Query("SELECT * FROM exceptional_recoveries WHERE sessionId = :sessionId ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getLatestRecoveryForSession(sessionId: String): ExceptionalRecoveryEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertRecovery(recovery: ExceptionalRecoveryEntity)
 
     // Payments
     @Query("SELECT * FROM payment_records ORDER BY createdAt DESC")
@@ -113,6 +132,9 @@ interface ParkoDao {
     @Query("SELECT * FROM incidents WHERE parkingId = :parkingId ORDER BY createdAt DESC")
     fun observeParkingIncidents(parkingId: String): Flow<List<IncidentEntity>>
 
+    @Query("SELECT * FROM incidents WHERE sessionId = :sessionId AND status != 'RESOLVED'")
+    suspend fun getOpenIncidentsForSession(sessionId: String): List<IncidentEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertIncident(incident: IncidentEntity)
 
@@ -126,10 +148,10 @@ interface ParkoDao {
     @Query("UPDATE notifications SET isRead = 1 WHERE userId = :userId")
     suspend fun markAllNotificationsRead(userId: String)
 
-    // Audit Logs
+    // Audit Logs (append-only: no update/delete allowed)
     @Query("SELECT * FROM audit_logs ORDER BY createdAt DESC")
     fun observeAllAuditLogs(): Flow<List<AuditLogEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAuditLog(log: AuditLogEntity)
 }

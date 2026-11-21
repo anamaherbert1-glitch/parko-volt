@@ -33,7 +33,13 @@ private val LightColorScheme = lightColorScheme(
     onSurface = ParkoCharcoal,
     surfaceVariant = ParkoSurfaceVariant,
     onSurfaceVariant = ParkoSlate,
-    outline = ParkoOutline
+    outline = ParkoOutline,
+    outlineVariant = ParkoOutlineVariant,
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color(0xFFF8FAFE),
+    surfaceContainer = Color(0xFFEFF4FC),
+    surfaceContainerHigh = Color(0xFFF3F6FC),
+    surfaceContainerHighest = Color(0xFFE1E9F6)
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -59,7 +65,13 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = Color(0xFFF1F5F9),
     surfaceVariant = ParkoDarkSurfaceVariant,
     onSurfaceVariant = Color(0xFF94A3B8),
-    outline = Color(0xFF334155)
+    outline = Color(0xFF475569),
+    outlineVariant = Color(0xFF2B3A52),
+    surfaceContainerLowest = Color(0xFF090F1D),
+    surfaceContainerLow = ParkoDarkBackground,
+    surfaceContainer = ParkoDarkSurface,
+    surfaceContainerHigh = ParkoDarkSurfaceVariant,
+    surfaceContainerHighest = Color(0xFF283548)
 )
 
 val ParkoShapes = Shapes(

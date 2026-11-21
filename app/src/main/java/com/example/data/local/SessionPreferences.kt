@@ -3,6 +3,7 @@ package com.example.data.local
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.data.model.AppSpace
@@ -19,6 +20,7 @@ class SessionPreferences(private val context: Context) {
         val REMEMBER_ME = booleanPreferencesKey("remember_me")
         val LANGUAGE = stringPreferencesKey("language")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val PRO_LAST_ACTIVE_AT = longPreferencesKey("pro_last_active_at")
     }
 
     val loggedInUserId: Flow<String?> = context.dataStore.data.map { it[Keys.USER_ID] }
@@ -35,17 +37,35 @@ class SessionPreferences(private val context: Context) {
         ThemeMode.entries.firstOrNull { it.name == raw } ?: ThemeMode.SYSTEM
     }
 
+    val proLastActiveAt: Flow<Long> = context.dataStore.data.map { it[Keys.PRO_LAST_ACTIVE_AT] ?: 0L }
+
     suspend fun saveSession(userId: String, rememberMe: Boolean, defaultSpace: AppSpace = AppSpace.PERSONAL) {
         context.dataStore.edit { prefs ->
             prefs[Keys.USER_ID] = userId
             prefs[Keys.REMEMBER_ME] = rememberMe
             prefs[Keys.ACTIVE_SPACE] = defaultSpace.name
+            if (defaultSpace == AppSpace.PRO || defaultSpace == AppSpace.ADMIN) {
+                prefs[Keys.PRO_LAST_ACTIVE_AT] = System.currentTimeMillis()
+            } else {
+                prefs.remove(Keys.PRO_LAST_ACTIVE_AT)
+            }
         }
     }
 
     suspend fun setActiveSpace(space: AppSpace) {
         context.dataStore.edit { prefs ->
             prefs[Keys.ACTIVE_SPACE] = space.name
+            if (space == AppSpace.PRO || space == AppSpace.ADMIN) {
+                prefs[Keys.PRO_LAST_ACTIVE_AT] = System.currentTimeMillis()
+            } else {
+                prefs.remove(Keys.PRO_LAST_ACTIVE_AT)
+            }
+        }
+    }
+
+    suspend fun refreshProActivity() {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.PRO_LAST_ACTIVE_AT] = System.currentTimeMillis()
         }
     }
 
@@ -64,6 +84,7 @@ class SessionPreferences(private val context: Context) {
     suspend fun clearSession() {
         context.dataStore.edit { prefs ->
             prefs.remove(Keys.USER_ID)
+            prefs.remove(Keys.PRO_LAST_ACTIVE_AT)
             prefs[Keys.ACTIVE_SPACE] = AppSpace.PERSONAL.name
         }
     }

@@ -12,13 +12,14 @@ import androidx.room.RoomDatabase
         ParkingLocationEntity::class,
         AttendantEntity::class,
         ParkingSessionEntity::class,
+        ExceptionalRecoveryEntity::class,
         PaymentRecordEntity::class,
         ManagerApplicationEntity::class,
         IncidentEntity::class,
         NotificationEntity::class,
         AuditLogEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class ParkoDatabase : RoomDatabase() {
@@ -34,7 +35,10 @@ abstract class ParkoDatabase : RoomDatabase() {
                     context.applicationContext,
                     ParkoDatabase::class.java,
                     "parko_database"
-                ).build().also { INSTANCE = it }
+                )
+                    .fallbackToDestructiveMigration(dropAllTables = true)
+                    .build()
+                    .also { INSTANCE = it }
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -32,11 +33,13 @@ import com.example.data.local.SeedData
 import com.example.ui.components.ParkoLogoBadge
 import com.example.ui.components.parkoAtmosphericBackground
 import com.example.ui.components.parkoCardOutline
+import com.example.ui.components.parkoTextFieldColors
 import com.example.ui.i18n.AppLanguage
 import com.example.ui.i18n.LocalAppLanguage
 import com.example.ui.i18n.tr
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.ParkoViewModel
+import com.example.util.ParkoSecurityConfig
 
 enum class AuthStep { WELCOME, LOGIN, REGISTER }
 
@@ -88,8 +91,8 @@ fun AuthFlow(
     if (showForgotDialog) {
         ForgotPasswordDialog(
             onDismiss = { showForgotDialog = false },
-            onReset = { phone, newPass ->
-                viewModel.resetPassword(phone, newPass) {
+            onReset = { phone, otpCode, newPass ->
+                viewModel.resetPassword(phone, newPass, otpCode) {
                     showForgotDialog = false
                 }
             }
@@ -236,62 +239,65 @@ fun WelcomeScreen(
                     .fillMaxWidth()
                     .height(54.dp)
                     .testTag("welcome_register_button"),
+                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Text(tr("Créer un compte", "Create an account"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
-            Spacer(modifier = Modifier.height(12.dp))
+            if (ParkoSecurityConfig.isDemoModeEnabled) {
+                Spacer(modifier = Modifier.height(18.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                text = tr("Accès démo", "Demo access"),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = tr("Mode Test / Démo (désactivé en production)", "Test / Demo Mode (disabled in production)"),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilledTonalButton(
-                    onClick = onDemoClientClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .minimumInteractiveComponentSize()
-                        .testTag("demo_codjo_button"),
-                    shape = RoundedCornerShape(12.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Filled.Person, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(tr("Client", "Client"), maxLines = 1, fontWeight = FontWeight.Bold)
-                }
-                FilledTonalButton(
-                    onClick = onDemoUserClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .minimumInteractiveComponentSize()
-                        .testTag("demo_amadou_button"),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Filled.Storefront, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(tr("Gestionnaire", "Manager"), maxLines = 1, fontWeight = FontWeight.Bold)
-                }
-                FilledTonalButton(
-                    onClick = onDemoAdminClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .minimumInteractiveComponentSize()
-                        .testTag("demo_admin_button"),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Filled.AdminPanelSettings, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Admin", maxLines = 1, fontWeight = FontWeight.Bold)
+                    FilledTonalButton(
+                        onClick = onDemoClientClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .minimumInteractiveComponentSize()
+                            .testTag("demo_codjo_button"),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Filled.Person, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(tr("Client", "Client"), maxLines = 1, fontWeight = FontWeight.Bold)
+                    }
+                    FilledTonalButton(
+                        onClick = onDemoUserClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .minimumInteractiveComponentSize()
+                            .testTag("demo_amadou_button"),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Filled.Storefront, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(tr("Gestionnaire", "Manager"), maxLines = 1, fontWeight = FontWeight.Bold)
+                    }
+                    FilledTonalButton(
+                        onClick = onDemoAdminClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .minimumInteractiveComponentSize()
+                            .testTag("demo_admin_button"),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Filled.AdminPanelSettings, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Admin", maxLines = 1, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
@@ -309,10 +315,10 @@ fun LoginScreen(
     onToggleLanguage: () -> Unit
 ) {
     val lang = LocalAppLanguage.current
-    var identifier by remember { mutableStateOf("+228 90 12 34 56") }
-    var password by remember { mutableStateOf("Parko2026!") }
+    var identifier by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var rememberMe by remember { mutableStateOf(true) }
+    var rememberMe by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -353,6 +359,7 @@ fun LoginScreen(
                 label = { Text(tr("Téléphone (+228...) ou e-mail", "Phone (+228...) or email")) },
                 leadingIcon = { Icon(Icons.Filled.Person, contentDescription = null, modifier = Modifier.size(24.dp)) },
                 singleLine = true,
+                colors = parkoTextFieldColors(),
                 modifier = Modifier.fillMaxWidth().testTag("login_identifier_input"),
                 shape = RoundedCornerShape(14.dp)
             )
@@ -374,6 +381,7 @@ fun LoginScreen(
                 },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 singleLine = true,
+                colors = parkoTextFieldColors(),
                 modifier = Modifier.fillMaxWidth().testTag("login_password_input"),
                 shape = RoundedCornerShape(14.dp)
             )
@@ -402,15 +410,17 @@ fun LoginScreen(
                 Text(tr("Se connecter", "Sign in"), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = onDemoClick,
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Icon(Icons.Filled.Bolt, contentDescription = null, tint = ParkoBlue, modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(tr("Connexion instantanée (Amadou Diallo)", "Instant sign in (Amadou Diallo)"), fontWeight = FontWeight.Bold)
+            if (ParkoSecurityConfig.isDemoModeEnabled) {
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onDemoClick,
+                    modifier = Modifier.fillMaxWidth().height(50.dp).testTag("demo_instant_login_button"),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(Icons.Filled.Bolt, contentDescription = null, tint = ParkoBlue, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(tr("Mode Test : Amadou Diallo", "Test Mode: Amadou Diallo"), fontWeight = FontWeight.Bold)
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -460,6 +470,7 @@ fun RegisterScreen(
                 onValueChange = { firstName = it },
                 label = { Text(tr("Prénom *", "First name *")) },
                 singleLine = true,
+                colors = parkoTextFieldColors(),
                 modifier = Modifier.fillMaxWidth().testTag("register_firstname_input"),
                 shape = RoundedCornerShape(14.dp)
             )
@@ -468,6 +479,7 @@ fun RegisterScreen(
                 onValueChange = { lastName = it },
                 label = { Text(tr("Nom *", "Last name *")) },
                 singleLine = true,
+                colors = parkoTextFieldColors(),
                 modifier = Modifier.fillMaxWidth().testTag("register_lastname_input"),
                 shape = RoundedCornerShape(14.dp)
             )
@@ -478,6 +490,7 @@ fun RegisterScreen(
                 placeholder = { Text("+228 90 12 34 56") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true,
+                colors = parkoTextFieldColors(),
                 modifier = Modifier.fillMaxWidth().testTag("register_phone_input"),
                 shape = RoundedCornerShape(14.dp)
             )
@@ -487,6 +500,7 @@ fun RegisterScreen(
                 label = { Text(tr("Adresse e-mail (optionnel)", "Email address (optional)")) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true,
+                colors = parkoTextFieldColors(),
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp)
             )
@@ -496,6 +510,7 @@ fun RegisterScreen(
                 label = { Text(tr("Mot de passe (min. 6 caractères) *", "Password (min. 6 chars) *")) },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
+                colors = parkoTextFieldColors(),
                 modifier = Modifier.fillMaxWidth().testTag("register_password_input"),
                 shape = RoundedCornerShape(14.dp)
             )
@@ -505,6 +520,7 @@ fun RegisterScreen(
                 label = { Text(tr("Confirmer le mot de passe *", "Confirm password *")) },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
+                colors = parkoTextFieldColors(),
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp)
             )
@@ -526,10 +542,10 @@ fun RegisterScreen(
 @Composable
 fun ForgotPasswordDialog(
     onDismiss: () -> Unit,
-    onReset: (String, String) -> Unit
+    onReset: (String, String, String) -> Unit
 ) {
     var phone by remember { mutableStateOf("+228 ") }
-    var otpCode by remember { mutableStateOf("1234") }
+    var otpCode by remember { mutableStateOf("") }
     var newPass by remember { mutableStateOf("") }
 
     AlertDialog(
@@ -538,40 +554,52 @@ fun ForgotPasswordDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    tr(
-                        "Saisissez votre numéro togolais et le code de vérification (1234 en mode local) pour définir un nouveau mot de passe.",
-                        "Enter your Togo phone number and verification code (1234 in local mode) to set a new password."
-                    ),
+                    if (ParkoSecurityConfig.isDemoModeEnabled) {
+                        tr(
+                            "Mode Test : saisissez votre numéro togolais et le code de vérification SMS (1234 en mode test local).",
+                            "Test Mode: enter your Togo phone number and SMS verification code (1234 in local test mode)."
+                        )
+                    } else {
+                        tr(
+                            "La réinitialisation du mot de passe nécessite un service SMS vérifié. Contactez le support PARKO en mode hors-ligne.",
+                            "Password reset requires a verified SMS service. Contact PARKO support in offline mode."
+                        )
+                    },
                     style = MaterialTheme.typography.bodySmall
                 )
                 OutlinedTextField(
                     value = phone,
                     onValueChange = { phone = it },
                     label = { Text(tr("Numéro de téléphone", "Phone number")) },
-                    singleLine = true
+                    singleLine = true,
+                    colors = parkoTextFieldColors(),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = otpCode,
                     onValueChange = { otpCode = it },
                     label = { Text(tr("Code de vérification SMS", "SMS verification code")) },
-                    singleLine = true
+                    singleLine = true,
+                    colors = parkoTextFieldColors(),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = newPass,
                     onValueChange = { newPass = it },
                     label = { Text(tr("Nouveau mot de passe", "New password")) },
                     visualTransformation = PasswordVisualTransformation(),
-                    singleLine = true
+                    singleLine = true,
+                    colors = parkoTextFieldColors(),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
             Button(
-                onClick = {
-                    if (otpCode.trim() == "1234") {
-                        onReset(phone, newPass)
-                    }
-                }
+                onClick = { onReset(phone, otpCode, newPass) }
             ) {
                 Text(tr("Réinitialiser", "Reset"))
             }

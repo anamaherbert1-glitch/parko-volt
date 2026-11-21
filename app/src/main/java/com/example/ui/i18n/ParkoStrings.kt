@@ -52,9 +52,16 @@ fun VehicleType.localizedLabel(en: Boolean): String = when (this) {
 
 fun SessionStatus.localizedLabel(en: Boolean): String = when (this) {
     SessionStatus.ACTIVE -> if (en) "Valid" else "Valide"
+    SessionStatus.EXIT_PENDING -> if (en) "Exit in progress" else "Sortie en cours"
     SessionStatus.COMPLETED -> if (en) "Completed" else "Terminée"
     SessionStatus.EXPIRED -> if (en) "Expired" else "Expirée"
     SessionStatus.NEEDS_VERIFICATION -> if (en) "Check required" else "Vérification requise"
+}
+
+fun RecoveryStatus.localizedLabel(en: Boolean): String = when (this) {
+    RecoveryStatus.PENDING -> if (en) "Pending" else "En attente"
+    RecoveryStatus.APPROVED -> if (en) "Approved" else "Approuvée"
+    RecoveryStatus.REJECTED -> if (en) "Rejected" else "Refusée"
 }
 
 fun PaymentMethod.localizedLabel(en: Boolean): String = when (this) {

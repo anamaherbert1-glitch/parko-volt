@@ -151,7 +151,7 @@ fun AdminDashboardScreen(
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Text(tr("Abonnements", "Subscriptions"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = ParkoBlueDark)
                                 Spacer(Modifier.height(4.dp))
-                                Text(formatFcfa(parkoSubRevenue), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, fontFamily = JetBrainsMonoFamily)
+                                Text(formatFcfa(parkoSubRevenue), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, fontFamily = ParkoMonoFamily)
                             }
                         }
                         Surface(
@@ -163,7 +163,7 @@ fun AdminDashboardScreen(
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Text(tr("Recettes Parkings", "Parking Revenue"), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = ParkoEmeraldDark)
                                 Spacer(Modifier.height(4.dp))
-                                Text(formatFcfa(parkingRevenue), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, fontFamily = JetBrainsMonoFamily)
+                                Text(formatFcfa(parkingRevenue), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, fontFamily = ParkoMonoFamily)
                             }
                         }
                     }
@@ -185,7 +185,7 @@ fun AdminDashboardScreen(
                                 onClick = { section = AdminSection.USERS },
                                 testTag = "admin_users_menu"
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             ParkoMenuRow(
                                 icon = Icons.Filled.Verified,
                                 title = tr("Gestionnaires", "Managers"),
@@ -194,7 +194,7 @@ fun AdminDashboardScreen(
                                 onClick = { section = AdminSection.APPLICATIONS },
                                 testTag = "admin_apps_menu"
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             ParkoMenuRow(
                                 icon = Icons.Filled.LocalParking,
                                 title = tr("Parkings", "Parkings"),
@@ -202,14 +202,14 @@ fun AdminDashboardScreen(
                                 onClick = { section = AdminSection.PARKINGS },
                                 testTag = "admin_parkings_menu"
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             ParkoMenuRow(
                                 icon = Icons.Filled.CardMembership,
                                 title = tr("Abonnements & Paiements", "Subscriptions & Payments"),
                                 onClick = { section = AdminSection.SUBSCRIPTIONS },
                                 testTag = "admin_subs_menu"
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             ParkoMenuRow(
                                 icon = Icons.Filled.BarChart,
                                 title = tr("Statistiques & Incidents", "Statistics & Incidents"),
@@ -218,7 +218,7 @@ fun AdminDashboardScreen(
                                 onClick = { section = AdminSection.STATS_INCIDENTS },
                                 testTag = "admin_stats_menu"
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             ParkoMenuRow(
                                 icon = Icons.Filled.Security,
                                 title = tr("Audit & Sécurité", "Audit & Security"),
@@ -321,7 +321,10 @@ fun AdminDashboardScreen(
                                     OutlinedTextField(
                                         value = note,
                                         onValueChange = { note = it },
-                                        label = { Text(tr("Remarque", "Note")) }
+                                        label = { Text(tr("Remarque", "Note")) },
+                                        colors = parkoTextFieldColors(),
+                                        shape = RoundedCornerShape(14.dp),
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
                             },
@@ -460,13 +463,21 @@ fun AdminDashboardScreen(
                                 tonalElevation = 1.dp,
                                 modifier = Modifier.fillMaxWidth().parkoCardOutline(14.dp)
                             ) {
-                                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                         Text(log.action, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = ParkoBlue)
-                                        Text(formatDateTime(log.createdAt), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        StatusPill(
+                                            label = log.result,
+                                            containerColor = if (log.result == "SUCCESS") ParkoEmeraldLight else ParkoRedLight,
+                                            contentColor = if (log.result == "SUCCESS") ParkoEmeraldDark else ParkoRedDark
+                                        )
                                     }
                                     Text("${log.actorName} • ${log.targetType} (${log.targetId})", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                                     Text(log.details, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    if (!log.reason.isNullOrBlank()) {
+                                        Text("${tr("Motif", "Reason")}: ${log.reason}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = ParkoRedDark)
+                                    }
+                                    Text(formatDateTime(log.createdAt), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         }

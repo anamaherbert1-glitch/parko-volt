@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -30,12 +31,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.data.local.*
 import com.example.data.model.*
 import com.example.ui.components.*
 import com.example.ui.i18n.*
 import com.example.ui.theme.*
+import com.example.util.ParkoSecurityConfig
 import java.util.Calendar
 
 @Composable
@@ -46,17 +49,20 @@ fun ProDashboardScreen(
     payments: List<PaymentRecordEntity>,
     attendants: List<AttendantEntity>,
     incidents: List<IncidentEntity>,
+    recoveries: List<ExceptionalRecoveryEntity> = emptyList(),
+    isOnline: Boolean = true,
     onRegisterVehicle: () -> Unit,
     onOpenScanner: () -> Unit,
     onOpenReports: () -> Unit,
     onOpenAttendants: () -> Unit,
     onOpenIncidents: () -> Unit,
     onOpenSubscriptions: () -> Unit,
+    onReviewRecovery: (ExceptionalRecoveryEntity, Boolean, String) -> Unit = { _, _, _ -> },
     onSelectSession: (ParkingSessionEntity) -> Unit,
     onSwitchToPersonal: () -> Unit
 ) {
     val en = LocalAppLanguage.current == AppLanguage.EN
-    val activeCount = sessions.count { it.status == SessionStatus.ACTIVE.name || it.status == SessionStatus.NEEDS_VERIFICATION.name }
+    val activeCount = sessions.count { it.status != SessionStatus.COMPLETED.name && it.status != SessionStatus.EXPIRED.name }
     val completedCount = sessions.count { it.status == SessionStatus.COMPLETED.name }
     val startOfDay = remember {
         Calendar.getInstance().apply {
@@ -151,6 +157,37 @@ fun ProDashboardScreen(
             Spacer(modifier = Modifier.height(14.dp))
         }
 
+        if (!isOnline) {
+            item {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = ParkoRedLight,
+                    contentColor = ParkoRedDark,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 12.dp)
+                        .parkoCardOutline(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(Icons.Filled.WifiOff, contentDescription = null, tint = ParkoRedDark)
+                        Text(
+                            tr(
+                                "Mode hors connexion : la validation définitive de sortie est bloquée.",
+                                "Offline mode: final vehicle exit validation is blocked."
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
         item {
             Surface(
                 onClick = { if (userRole == UserRole.MANAGER) onOpenSubscriptions() },
@@ -178,7 +215,7 @@ fun ProDashboardScreen(
                         Text(
                             text = if (quotaLimit == Int.MAX_VALUE) "$quotaUsed / ${tr("Illimité", "Unlimited")}" else "$quotaUsed / $quotaLimit",
                             style = MaterialTheme.typography.labelLarge,
-                            fontFamily = JetBrainsMonoFamily,
+                            fontFamily = ParkoMonoFamily,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -284,32 +321,122 @@ fun ProDashboardScreen(
         }
 
         item {
+            val isManagerOrSup = userRole == UserRole.MANAGER || userRole == UserRole.SUPERVISOR
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                AssistChip(
-                    onClick = onOpenReports,
-                    label = { Text(tr("Rapports", "Reports"), fontWeight = FontWeight.Bold) },
-                    leadingIcon = { Icon(Icons.Filled.BarChart, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                    modifier = Modifier.testTag("pro_reports_chip")
-                )
-                AssistChip(
-                    onClick = onOpenAttendants,
-                    label = { Text("${tr("Gardiens", "Attendants")} (${attendants.count { it.isActive }})", fontWeight = FontWeight.Bold) },
-                    leadingIcon = { Icon(Icons.Filled.Groups, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                    modifier = Modifier.testTag("pro_attendants_chip")
-                )
+                if (isManagerOrSup) {
+                    AssistChip(
+                        onClick = onOpenReports,
+                        label = { Text(tr("Rapports", "Reports"), fontWeight = FontWeight.Bold) },
+                        leadingIcon = { Icon(Icons.Filled.BarChart, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        colors = parkoAssistChipColors(),
+                        border = parkoAssistChipBorder(),
+                        modifier = Modifier.testTag("pro_reports_chip")
+                    )
+                }
+                if (userRole == UserRole.MANAGER) {
+                    AssistChip(
+                        onClick = onOpenAttendants,
+                        label = { Text("${tr("Gardiens", "Attendants")} (${attendants.count { it.isActive }})", fontWeight = FontWeight.Bold) },
+                        leadingIcon = { Icon(Icons.Filled.Groups, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        colors = parkoAssistChipColors(),
+                        border = parkoAssistChipBorder(),
+                        modifier = Modifier.testTag("pro_attendants_chip")
+                    )
+                }
                 AssistChip(
                     onClick = onOpenIncidents,
                     label = { Text("Incidents ($openIncidentsCount)", fontWeight = FontWeight.Bold) },
                     leadingIcon = { Icon(Icons.Filled.Report, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    colors = parkoAssistChipColors(),
+                    border = parkoAssistChipBorder(),
                     modifier = Modifier.testTag("pro_incidents_chip")
                 )
             }
             Spacer(modifier = Modifier.height(14.dp))
+        }
+
+        val pendingRecoveries = recoveries.filter { it.status == RecoveryStatus.PENDING.name }
+        if ((userRole == UserRole.MANAGER || userRole == UserRole.SUPERVISOR) && pendingRecoveries.isNotEmpty()) {
+            item {
+                var reviewTarget by remember { mutableStateOf<Pair<ExceptionalRecoveryEntity, Boolean>?>(null) }
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        tr("Récupérations exceptionnelles en attente", "Pending exceptional recoveries"),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = ParkoAmberDark
+                    )
+                    pendingRecoveries.forEach { rec ->
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = ParkoAmberLight,
+                            contentColor = ParkoCharcoal,
+                            modifier = Modifier.fillMaxWidth().parkoCardOutline(16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("${rec.sessionRef} • ${rec.declaredPlateNumber}", fontWeight = FontWeight.Bold)
+                                Text("${rec.reasonType} — ${rec.claimantName}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                                Text(rec.description, style = MaterialTheme.typography.bodySmall)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = { reviewTarget = rec to true },
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text(tr("Approuver", "Approve"), fontWeight = FontWeight.Bold) }
+                                    OutlinedButton(
+                                        onClick = { reviewTarget = rec to false },
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ParkoRedDark),
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text(tr("Refuser", "Reject"), fontWeight = FontWeight.Bold) }
+                                }
+                            }
+                        }
+                    }
+                }
+                reviewTarget?.let { (rec, approve) ->
+                    var reason by remember { mutableStateOf("") }
+                    AlertDialog(
+                        onDismissRequest = { reviewTarget = null },
+                        title = {
+                            Text(
+                                if (approve) tr("Approuver la récupération", "Approve recovery")
+                                else tr("Refuser la récupération", "Reject recovery"),
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("${rec.sessionRef} (${rec.declaredPlateNumber}) • ${rec.claimantName}", fontWeight = FontWeight.SemiBold)
+                                OutlinedTextField(
+                                    value = reason,
+                                    onValueChange = { reason = it },
+                                    label = { Text(tr("Motif obligatoire *", "Mandatory reason *")) },
+                                    minLines = 2,
+                                    colors = parkoTextFieldColors(),
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            Button(onClick = {
+                                onReviewRecovery(rec, approve, reason)
+                                reviewTarget = null
+                            }) { Text(tr("Confirmer", "Confirm"), fontWeight = FontWeight.Bold) }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { reviewTarget = null }) { Text(tr("Annuler", "Cancel")) }
+                        }
+                    )
+                }
+            }
         }
 
         item {
@@ -359,7 +486,7 @@ fun ProDashboardScreen(
                         Column(horizontalAlignment = Alignment.End) {
                             PaymentStatusBadge(s.paymentStatus)
                             Spacer(Modifier.height(4.dp))
-                            Text(formatFcfa(s.feeFcfa), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, fontFamily = JetBrainsMonoFamily)
+                            Text(formatFcfa(s.feeFcfa), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, fontFamily = ParkoMonoFamily)
                         }
                     }
                 }
@@ -412,6 +539,8 @@ fun RegisterVehicleEntryScreen(
                             feeText = type.defaultFeeFcfa.toString()
                         },
                         label = { Text(type.localizedLabel(en), fontWeight = FontWeight.Bold) },
+                        colors = parkoFilterChipColors(),
+                        border = parkoFilterChipBorder(selectedType == type),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -425,6 +554,8 @@ fun RegisterVehicleEntryScreen(
                             feeText = type.defaultFeeFcfa.toString()
                         },
                         label = { Text(type.localizedLabel(en), fontWeight = FontWeight.Bold) },
+                        colors = parkoFilterChipColors(),
+                        border = parkoFilterChipBorder(selectedType == type),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -435,6 +566,8 @@ fun RegisterVehicleEntryScreen(
                 onValueChange = { plate = it.uppercase() },
                 label = { Text(tr("Plaque * (ex: TG-1234-AA)", "Plate * (e.g. TG-1234-AA)")) },
                 singleLine = true,
+                colors = parkoTextFieldColors(),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth().testTag("entry_plate_input")
             )
             OutlinedTextField(
@@ -442,6 +575,8 @@ fun RegisterVehicleEntryScreen(
                 onValueChange = { brandModel = it },
                 label = { Text(tr("Marque / Modèle", "Brand / Model")) },
                 singleLine = true,
+                colors = parkoTextFieldColors(),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
@@ -449,6 +584,8 @@ fun RegisterVehicleEntryScreen(
                 onValueChange = { color = it },
                 label = { Text(tr("Couleur", "Color")) },
                 singleLine = true,
+                colors = parkoTextFieldColors(),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
@@ -456,6 +593,8 @@ fun RegisterVehicleEntryScreen(
                 onValueChange = { ownerName = it },
                 label = { Text(tr("Propriétaire *", "Owner *")) },
                 singleLine = true,
+                colors = parkoTextFieldColors(),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth().testTag("entry_owner_input")
             )
             OutlinedTextField(
@@ -464,23 +603,31 @@ fun RegisterVehicleEntryScreen(
                 label = { Text(tr("Téléphone (+228...)", "Phone (+228...)")) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true,
+                colors = parkoTextFieldColors(),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth()
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AssistChip(
-                    onClick = {
-                        ownerName = "Amadou Diallo"
-                        ownerPhone = "+228 90 12 34 56"
-                    },
-                    label = { Text("Amadou (+228 90...)", fontWeight = FontWeight.SemiBold) }
-                )
-                AssistChip(
-                    onClick = {
-                        ownerName = "Codjo Agbeko"
-                        ownerPhone = "+228 98 11 22 33"
-                    },
-                    label = { Text("Codjo (+228 98...)", fontWeight = FontWeight.SemiBold) }
-                )
+            if (ParkoSecurityConfig.isDemoModeEnabled) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AssistChip(
+                        onClick = {
+                            ownerName = "Amadou Diallo"
+                            ownerPhone = "+228 90 12 34 56"
+                        },
+                        label = { Text("Amadou (+228 90...)", fontWeight = FontWeight.SemiBold) },
+                        colors = parkoAssistChipColors(),
+                        border = parkoAssistChipBorder()
+                    )
+                    AssistChip(
+                        onClick = {
+                            ownerName = "Codjo Agbeko"
+                            ownerPhone = "+228 98 11 22 33"
+                        },
+                        label = { Text("Codjo (+228 98...)", fontWeight = FontWeight.SemiBold) },
+                        colors = parkoAssistChipColors(),
+                        border = parkoAssistChipBorder()
+                    )
+                }
             }
             OutlinedTextField(
                 value = feeText,
@@ -488,6 +635,8 @@ fun RegisterVehicleEntryScreen(
                 label = { Text(tr("Tarif (FCFA)", "Fee (FCFA)")) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
+                colors = parkoTextFieldColors(),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -497,7 +646,9 @@ fun RegisterVehicleEntryScreen(
                     FilterChip(
                         selected = paymentMethod == method,
                         onClick = { paymentMethod = method },
-                        label = { Text(method.localizedLabel(en), fontWeight = FontWeight.Bold) }
+                        label = { Text(method.localizedLabel(en), fontWeight = FontWeight.Bold) },
+                        colors = parkoFilterChipColors(),
+                        border = parkoFilterChipBorder(paymentMethod == method)
                     )
                 }
             }
@@ -661,27 +812,61 @@ fun QrScannerScreen(
 @Composable
 fun VehicleVerificationScreen(
     session: ParkingSessionEntity,
+    currentUser: UserEntity,
+    isOnline: Boolean = true,
+    latestRecovery: ExceptionalRecoveryEntity? = null,
     openedWithoutQr: Boolean,
     onBack: () -> Unit,
     onOpenQr: () -> Unit,
     onVerifyMobileMoney: (PaymentMethod) -> Unit,
-    onAuthorizeExit: (physicalChecked: Boolean, withoutQr: Boolean, auditReason: String) -> Unit,
+    onVerifyWithdrawalCode: (String) -> Unit,
+    onUnlockBlockedWithdrawal: (String) -> Unit,
+    onReportPhysicalMismatch: (String) -> Unit,
+    onSubmitExceptionalRecovery: (reasonType: String, claimantName: String, declaredPlate: String, description: String, physicalChecked: Boolean) -> Unit,
+    onReviewRecovery: (ExceptionalRecoveryEntity, Boolean, String) -> Unit,
+    onAuthorizeExit: (physicalChecked: Boolean, auditReason: String) -> Unit,
     onReportIncident: (IncidentType, String) -> Unit
 ) {
     val en = LocalAppLanguage.current == AppLanguage.EN
     var physicalChecked by remember { mutableStateOf(false) }
-    var withoutQr by remember { mutableStateOf(openedWithoutQr) }
+    var mismatchSelected by remember(session.physicalMismatchReported) { mutableStateOf(session.physicalMismatchReported) }
+    var secretCodeInput by remember { mutableStateOf("") }
     var auditReason by remember {
         mutableStateOf(
             if (openedWithoutQr) {
-                if (en) "Client lost QR ticket — ID checked" else "Client ayant égaré son ticket QR — pièce d'identité vérifiée"
+                if (en) "Client without QR ticket — ID & recovery form checked" else "Client sans ticket QR — identité et formulaire de récupération contrôlés"
             } else ""
         )
     }
     var showIncidentDialog by remember { mutableStateOf(false) }
+    var showExitConfirmDialog by remember { mutableStateOf(false) }
+    var showRecoveryDialog by remember { mutableStateOf(false) }
+    var showUnlockDialog by remember { mutableStateOf(false) }
+    var recoveryDecisionApprove by remember { mutableStateOf<Boolean?>(null) }
 
     val alreadyCompleted = session.status == SessionStatus.COMPLETED.name
+    val isExpired = session.status == SessionStatus.EXPIRED.name
+    val needsVerification = session.status == SessionStatus.NEEDS_VERIFICATION.name
+    val lockedByAnother = session.status == SessionStatus.EXIT_PENDING.name &&
+        session.exitPendingByUserId != null &&
+        session.exitPendingByUserId != currentUser.id &&
+        (session.exitPendingExpiresAt ?: 0L) > System.currentTimeMillis()
     val paymentConfirmed = session.paymentStatus == PaymentStatus.CONFIRMED.name
+    val secretCodeVerified = session.withdrawalVerifiedAt != null
+    val recoveryApproved = latestRecovery?.status == RecoveryStatus.APPROVED.name
+    val isManagerOrSup = currentUser.role == UserRole.MANAGER.name || currentUser.role == UserRole.SUPERVISOR.name
+    val vTypeLabel = (VehicleType.entries.firstOrNull { it.name == session.vehicleType } ?: VehicleType.AUTRE).localizedLabel(en)
+
+    val canAuthorizeExit = isOnline &&
+        !alreadyCompleted &&
+        !isExpired &&
+        !needsVerification &&
+        !lockedByAnother &&
+        !mismatchSelected &&
+        !session.physicalMismatchReported &&
+        physicalChecked &&
+        paymentConfirmed &&
+        (secretCodeVerified || recoveryApproved)
 
     Column(modifier = Modifier.fillMaxSize().parkoAtmosphericBackground()) {
         ParkoTopBar(title = tr("Vérification véhicule", "Vehicle verification"), onBack = onBack)
@@ -699,14 +884,56 @@ fun VehicleVerificationScreen(
                 photoUri = session.vehiclePhotoUri,
                 drawableKey = session.vehicleDrawableKey,
                 vehicleType = session.vehicleType,
-                modifier = Modifier.fillMaxWidth().height(170.dp).parkoCardOutline(14.dp)
+                modifier = Modifier.fillMaxWidth().height(160.dp).parkoCardOutline(14.dp)
             )
 
+            if (!isOnline && !alreadyCompleted) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = ParkoRedLight,
+                    contentColor = ParkoRedDark,
+                    modifier = Modifier.fillMaxWidth().parkoCardOutline(16.dp)
+                ) {
+                    Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.WifiOff, contentDescription = null, tint = ParkoRedDark)
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            tr("Mode hors connexion : validation définitive de sortie bloquée.", "Offline mode: final exit validation blocked."),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            if (lockedByAnother) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = ParkoRedLight,
+                    contentColor = ParkoRedDark,
+                    modifier = Modifier.fillMaxWidth().parkoCardOutline(16.dp)
+                ) {
+                    Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Lock, contentDescription = null, tint = ParkoRedDark)
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            tr(
+                                "Sortie déjà en cours par ${session.exitPendingByName ?: "un autre gardien"}. Validation bloquée.",
+                                "Exit already in progress by ${session.exitPendingByName ?: "another attendant"}. Blocked."
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // Status Banner (Section 1.3 & Test 2)
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = when {
-                    alreadyCompleted -> ParkoAmberLight
-                    session.status == SessionStatus.NEEDS_VERIFICATION.name -> ParkoRedLight
+                    alreadyCompleted || needsVerification || isExpired -> ParkoRedLight
+                    session.status == SessionStatus.EXIT_PENDING.name -> ParkoAmberLight
                     else -> ParkoEmeraldLight
                 },
                 contentColor = ParkoCharcoal,
@@ -715,14 +942,14 @@ fun VehicleVerificationScreen(
                 Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = when {
-                            alreadyCompleted -> Icons.Filled.Warning
-                            session.status == SessionStatus.NEEDS_VERIFICATION.name -> Icons.Filled.GppMaybe
-                            else -> Icons.Filled.CheckCircle
+                            alreadyCompleted || needsVerification || isExpired -> Icons.Filled.GppBad
+                            session.status == SessionStatus.EXIT_PENDING.name -> Icons.Filled.HourglassTop
+                            else -> Icons.Filled.VerifiedUser
                         },
                         contentDescription = null,
                         tint = when {
-                            alreadyCompleted -> ParkoAmberDark
-                            session.status == SessionStatus.NEEDS_VERIFICATION.name -> ParkoRedDark
+                            alreadyCompleted || needsVerification || isExpired -> ParkoRedDark
+                            session.status == SessionStatus.EXIT_PENDING.name -> ParkoAmberDark
                             else -> ParkoEmeraldDark
                         },
                         modifier = Modifier.size(28.dp)
@@ -730,13 +957,17 @@ fun VehicleVerificationScreen(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = when {
-                                alreadyCompleted -> tr("Véhicule déjà sorti", "Vehicle already exited")
-                                session.status == SessionStatus.NEEDS_VERIFICATION.name -> tr("Vérification requise", "Verification required")
-                                else -> tr("Ticket valide", "Valid ticket")
+                            text = if (alreadyCompleted) {
+                                tr(
+                                    "Ce ticket a déjà été utilisé pour une sortie. Toute nouvelle validation est interdite.",
+                                    "This ticket has already been used for an exit. Any further validation is forbidden."
+                                )
+                            } else {
+                                (SessionStatus.entries.firstOrNull { it.name == session.status } ?: SessionStatus.ACTIVE).localizedLabel(en)
                             },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (alreadyCompleted || needsVerification) ParkoRedDark else ParkoCharcoal
                         )
                         Text(
                             text = "${session.referenceCode} • ${formatDateTime(session.entryTime)}",
@@ -747,18 +978,30 @@ fun VehicleVerificationScreen(
                 }
             }
 
+            // Full 9 Ticket Information Fields (Section 1.3)
             Surface(
                 shape = RoundedCornerShape(18.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 1.dp,
                 modifier = Modifier.fillMaxWidth().parkoCardOutline(18.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${session.vehicleLabel} (${session.vehicleColor})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("${tr("Plaque", "Plate")} : ${session.plateNumber}", fontFamily = JetBrainsMonoFamily, color = ParkoBlue, fontWeight = FontWeight.Bold)
-                    Text("${tr("Propriétaire", "Owner")} : ${session.ownerName} • ${session.ownerPhone.ifBlank { tr("Non renseigné", "N/A") }}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                    Text("${tr("Gardien", "Attendant")} : ${session.attendantName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    VerificationInfoRow(tr("Référence ticket", "Ticket ref"), session.referenceCode)
+                    VerificationInfoRow(tr("Type de véhicule", "Vehicle type"), vTypeLabel)
+                    VerificationInfoRow(tr("Plaque", "License plate"), session.plateNumber)
+                    VerificationInfoRow(tr("Marque & modèle", "Brand & model"), session.vehicleLabel)
+                    VerificationInfoRow(tr("Couleur", "Color"), session.vehicleColor)
+                    VerificationInfoRow(tr("Propriétaire", "Owner"), "${session.ownerName} (${session.ownerPhone.ifBlank { tr("Non renseigné", "N/A") }})")
+                    VerificationInfoRow(tr("Date & heure d'entrée", "Entry date/time"), formatDateTime(session.entryTime))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(tr("Statut du ticket", "Ticket status"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        SessionStatusBadge(session.status)
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -766,7 +1009,7 @@ fun VehicleVerificationScreen(
                     ) {
                         Column {
                             Text(PaymentMethodLabel(session.paymentMethod), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            Text(formatFcfa(session.feeFcfa), fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.Bold)
+                            Text(formatFcfa(session.feeFcfa), fontFamily = ParkoMonoFamily, fontWeight = FontWeight.Bold)
                         }
                         PaymentStatusBadge(session.paymentStatus)
                     }
@@ -797,37 +1040,238 @@ fun VehicleVerificationScreen(
             }
 
             if (!alreadyCompleted) {
+                // Section 1.4: Reinforced Physical Check & Non-conformity Alert
                 Surface(
-                    onClick = { physicalChecked = !physicalChecked },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                     color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.5.dp, if (physicalChecked) ParkoEmerald else MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+                    modifier = Modifier.fillMaxWidth().parkoCardOutline(18.dp)
                 ) {
-                    Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = physicalChecked, onCheckedChange = { physicalChecked = it })
-                        Spacer(Modifier.width(8.dp))
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
-                            tr("Contrôle physique du véhicule effectué", "Physical vehicle check completed"),
-                            style = MaterialTheme.typography.bodyMedium,
+                            tr("Contrôle physique comparatif", "Physical comparison check"),
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
+                        Text(
+                            tr(
+                                "Comparez physiquement : Type ($vTypeLabel), Plaque (${session.plateNumber}), Modèle (${session.vehicleLabel}), Couleur (${session.vehicleColor}).",
+                                "Compare physically: Type ($vTypeLabel), Plate (${session.plateNumber}), Model (${session.vehicleLabel}), Color (${session.vehicleColor})."
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Surface(
+                            onClick = { if (!mismatchSelected) physicalChecked = !physicalChecked },
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (physicalChecked && !mismatchSelected) ParkoEmeraldLight else MaterialTheme.colorScheme.surface,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.5.dp, if (physicalChecked && !mismatchSelected) ParkoEmerald else MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
+                        ) {
+                            Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = physicalChecked && !mismatchSelected,
+                                    onCheckedChange = { if (!mismatchSelected) physicalChecked = it },
+                                    modifier = Modifier.testTag("physical_check_checkbox")
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    tr("Contrôle physique du véhicule effectué", "Physical vehicle check completed"),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                mismatchSelected = true
+                                physicalChecked = false
+                                onReportPhysicalMismatch(
+                                    if (en) "Vehicle does not match ticket details (${session.plateNumber})"
+                                    else "Les informations du véhicule présenté ne correspondent pas au ticket (${session.plateNumber})."
+                                )
+                            },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ParkoRedDark),
+                            modifier = Modifier.fillMaxWidth().testTag("report_physical_mismatch_button"),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Filled.Warning, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(tr("Signaler une différence physique", "Report physical mismatch"), fontWeight = FontWeight.Bold)
+                        }
+
+                        if (mismatchSelected || session.physicalMismatchReported) {
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = ParkoRedLight,
+                                contentColor = ParkoRedDark,
+                                modifier = Modifier.fillMaxWidth().parkoCardOutline(14.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(
+                                        tr(
+                                            "Attention : les informations du véhicule ne correspondent pas au ticket. Sortie refusée.",
+                                            "Warning: vehicle information does not match the ticket. Exit refused."
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = ParkoRedDark
+                                    )
+                                    Button(
+                                        onClick = { showIncidentDialog = true },
+                                        colors = ButtonDefaults.buttonColors(containerColor = ParkoRed),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(tr("Signaler un incident", "Report an incident"), fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
-                if (withoutQr) {
-                    OutlinedTextField(
-                        value = auditReason,
-                        onValueChange = { auditReason = it },
-                        label = { Text(tr("Motif sortie sans QR *", "Reason without QR *")) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                // Section 1.3: Secret Withdrawal Code Verification
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth().parkoCardOutline(18.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            tr("Vérification de l'autorisation de retrait", "Withdrawal authorization check"),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (secretCodeVerified) {
+                            StatusPill(
+                                label = tr("Code secret vérifié ✓", "Secret code verified ✓"),
+                                containerColor = ParkoEmeraldLight,
+                                contentColor = ParkoEmeraldDark,
+                                icon = Icons.Filled.Verified
+                            )
+                        } else if (session.withdrawalBlockedForManager) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = ParkoRedLight,
+                                contentColor = ParkoRedDark,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(
+                                        tr(
+                                            "Vérification bloquée après ${session.withdrawalAttempts} tentatives erronées. Intervention du gestionnaire ou superviseur requise.",
+                                            "Blocked after ${session.withdrawalAttempts} failed attempts. Manager or supervisor intervention required."
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    if (isManagerOrSup) {
+                                        Button(
+                                            onClick = { showUnlockDialog = true },
+                                            colors = ButtonDefaults.buttonColors(containerColor = ParkoAmberDark),
+                                            modifier = Modifier.fillMaxWidth().testTag("manager_unlock_withdrawal_button")
+                                        ) {
+                                            Text(tr("Débloquer la vérification", "Unlock verification"), fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            OutlinedTextField(
+                                value = secretCodeInput,
+                                onValueChange = { secretCodeInput = it.filter { ch -> ch.isDigit() }.take(6) },
+                                label = { Text(tr("Saisir le code secret de retrait", "Enter secret withdrawal code")) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                                visualTransformation = PasswordVisualTransformation(),
+                                singleLine = true,
+                                colors = parkoTextFieldColors(),
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.fillMaxWidth().testTag("withdrawal_code_input")
+                            )
+                            if (session.withdrawalAttempts > 0) {
+                                Text(
+                                    tr(
+                                        "Tentatives échouées : ${session.withdrawalAttempts} / ${ParkoSecurityConfig.withdrawalManagerBlockAttempts}",
+                                        "Failed attempts: ${session.withdrawalAttempts} / ${ParkoSecurityConfig.withdrawalManagerBlockAttempts}"
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ParkoRedDark
+                                )
+                            }
+                            Button(
+                                onClick = { onVerifyWithdrawalCode(secretCodeInput) },
+                                enabled = secretCodeInput.length == 6 && !lockedByAnother,
+                                modifier = Modifier.fillMaxWidth().height(48.dp).testTag("verify_withdrawal_code_button"),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Filled.Key, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(tr("Vérifier le code", "Verify code"), fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                        // Exceptional recovery without secret code (Section 3)
+                        if (latestRecovery != null) {
+                            val rStatus = RecoveryStatus.entries.firstOrNull { it.name == latestRecovery.status } ?: RecoveryStatus.PENDING
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = when (rStatus) {
+                                    RecoveryStatus.APPROVED -> ParkoEmeraldLight
+                                    RecoveryStatus.REJECTED -> ParkoRedLight
+                                    RecoveryStatus.PENDING -> ParkoAmberLight
+                                },
+                                contentColor = ParkoCharcoal,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(
+                                        "${tr("Récupération exceptionnelle", "Exceptional recovery")} : ${rStatus.localizedLabel(en)}",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text("${latestRecovery.reasonType} • ${latestRecovery.claimantName}", style = MaterialTheme.typography.bodySmall)
+                                    if (!latestRecovery.decisionReason.isNullOrBlank()) {
+                                        Text("${tr("Décision", "Decision")}: ${latestRecovery.decisionReason}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                    }
+                                    if (rStatus == RecoveryStatus.PENDING && isManagerOrSup) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Button(
+                                                onClick = { recoveryDecisionApprove = true },
+                                                modifier = Modifier.weight(1f).testTag("approve_recovery_button")
+                                            ) { Text(tr("Approuver la récupération", "Approve"), fontWeight = FontWeight.Bold) }
+                                            OutlinedButton(
+                                                onClick = { recoveryDecisionApprove = false },
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = ParkoRedDark),
+                                                modifier = Modifier.weight(1f).testTag("reject_recovery_button")
+                                            ) { Text(tr("Refuser", "Reject"), fontWeight = FontWeight.Bold) }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!secretCodeVerified && !recoveryApproved) {
+                            OutlinedButton(
+                                onClick = { showRecoveryDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(46.dp).testTag("exceptional_recovery_button"),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Filled.SupportAgent, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(tr("Client sans code de retrait", "Client without withdrawal code"), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
 
+                // Section 1.5: Strict Authorize Exit Button
                 Button(
-                    onClick = { onAuthorizeExit(physicalChecked, withoutQr, auditReason) },
-                    enabled = physicalChecked && paymentConfirmed,
+                    onClick = { showExitConfirmDialog = true },
+                    enabled = canAuthorizeExit,
                     modifier = Modifier.fillMaxWidth().height(54.dp).testTag("authorize_exit_button"),
                     shape = RoundedCornerShape(14.dp)
                 ) {
@@ -845,19 +1289,182 @@ fun VehicleVerificationScreen(
                     Spacer(Modifier.width(8.dp))
                     Text(tr("Imprimer / Envoyer le ticket QR", "Print / Send QR ticket"), fontWeight = FontWeight.Bold)
                 }
+            }
 
-                OutlinedButton(
-                    onClick = { showIncidentDialog = true },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = ParkoRed),
-                    modifier = Modifier.fillMaxWidth().height(50.dp).testTag("report_incident_button"),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Icon(Icons.Filled.Report, contentDescription = null, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(tr("Signaler un incident", "Report incident"), fontWeight = FontWeight.Bold)
-                }
+            OutlinedButton(
+                onClick = { showIncidentDialog = true },
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = ParkoRed),
+                modifier = Modifier.fillMaxWidth().height(50.dp).testTag("report_incident_button"),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Icon(Icons.Filled.Report, contentDescription = null, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(tr("Signaler un incident", "Report incident"), fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+
+    if (showExitConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmDialog = false },
+            title = { Text(tr("Validation définitive", "Final confirmation"), fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    tr(
+                        "Confirmer définitivement la sortie de ce véhicule ?",
+                        "Confirm final exit of this vehicle?"
+                    )
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExitConfirmDialog = false
+                        onAuthorizeExit(physicalChecked, auditReason)
+                    },
+                    modifier = Modifier.testTag("confirm_final_exit_button")
+                ) {
+                    Text(tr("Confirmer la sortie", "Confirm exit"), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitConfirmDialog = false }) {
+                    Text(tr("Annuler", "Cancel"), fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    if (showUnlockDialog) {
+        var unlockReason by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showUnlockDialog = false },
+            title = { Text(tr("Débloquer la vérification", "Unlock verification"), fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = unlockReason,
+                    onValueChange = { unlockReason = it },
+                    label = { Text(tr("Motif de l'intervention *", "Intervention reason *")) },
+                    minLines = 2,
+                    colors = parkoTextFieldColors(),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showUnlockDialog = false
+                    onUnlockBlockedWithdrawal(unlockReason)
+                }) { Text(tr("Débloquer", "Unlock"), fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUnlockDialog = false }) { Text(tr("Annuler", "Cancel")) }
+            }
+        )
+    }
+
+    if (showRecoveryDialog) {
+        val reasons = listOf("Ticket perdu", "Téléphone éteint", "Code secret oublié", "Problème d'affichage")
+        var selectedReason by remember { mutableStateOf(reasons.first()) }
+        var claimantName by remember { mutableStateOf(session.ownerName) }
+        var declaredPlate by remember { mutableStateOf(session.plateNumber) }
+        var desc by remember { mutableStateOf("") }
+        var confirmPhysical by remember { mutableStateOf(physicalChecked) }
+
+        AlertDialog(
+            onDismissRequest = { showRecoveryDialog = false },
+            title = { Text(tr("Récupération exceptionnelle", "Exceptional recovery"), fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    reasons.forEach { r ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = selectedReason == r, onClick = { selectedReason = r })
+                            Text(r, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    OutlinedTextField(
+                        value = claimantName,
+                        onValueChange = { claimantName = it },
+                        label = { Text(tr("Nom du client demandeur *", "Claimant name *")) },
+                        singleLine = true,
+                        colors = parkoTextFieldColors(),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = declaredPlate,
+                        onValueChange = { declaredPlate = it.uppercase() },
+                        label = { Text(tr("Plaque déclarée *", "Declared plate *")) },
+                        singleLine = true,
+                        colors = parkoTextFieldColors(),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = desc,
+                        onValueChange = { desc = it },
+                        label = { Text(tr("Description et justificatif *", "Description & proof *")) },
+                        minLines = 2,
+                        colors = parkoTextFieldColors(),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = confirmPhysical, onCheckedChange = { confirmPhysical = it })
+                        Text(tr("Contrôle physique confirmé", "Physical check confirmed"), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showRecoveryDialog = false
+                    onSubmitExceptionalRecovery(selectedReason, claimantName, declaredPlate, desc, confirmPhysical)
+                }) { Text(tr("Soumettre au responsable", "Submit for approval"), fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRecoveryDialog = false }) { Text(tr("Annuler", "Cancel")) }
+            }
+        )
+    }
+
+    recoveryDecisionApprove?.let { approve ->
+        val rec = latestRecovery
+        if (rec != null) {
+            var reason by remember { mutableStateOf("") }
+            AlertDialog(
+                onDismissRequest = { recoveryDecisionApprove = null },
+                title = {
+                    Text(
+                        if (approve) tr("Approuver la récupération", "Approve recovery")
+                        else tr("Refuser la récupération", "Reject recovery"),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    OutlinedTextField(
+                        value = reason,
+                        onValueChange = { reason = it },
+                        label = { Text(tr("Motif obligatoire *", "Mandatory reason *")) },
+                        minLines = 2,
+                        colors = parkoTextFieldColors(),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        onReviewRecovery(rec, approve, reason)
+                        recoveryDecisionApprove = null
+                    }) { Text(tr("Confirmer", "Confirm"), fontWeight = FontWeight.Bold) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { recoveryDecisionApprove = null }) { Text(tr("Annuler", "Cancel")) }
+                }
+            )
         }
     }
 
@@ -880,7 +1487,10 @@ fun VehicleVerificationScreen(
                         value = desc,
                         onValueChange = { desc = it },
                         label = { Text(tr("Description détaillée *", "Detailed description *")) },
-                        minLines = 2
+                        minLines = 2,
+                        colors = parkoTextFieldColors(),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             },
@@ -894,6 +1504,18 @@ fun VehicleVerificationScreen(
                 TextButton(onClick = { showIncidentDialog = false }) { Text(tr("Annuler", "Cancel")) }
             }
         )
+    }
+}
+
+@Composable
+private fun VerificationInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -929,6 +1551,7 @@ fun ProHistoryScreen(
             placeholder = { Text(tr("Rechercher plaque, propriétaire, code...", "Search plate, owner, code...")) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             singleLine = true,
+            colors = parkoTextFieldColors(),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             shape = RoundedCornerShape(14.dp)
         )
@@ -937,9 +1560,27 @@ fun ProHistoryScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterChip(selected = tab == "TOUS", onClick = { tab = "TOUS" }, label = { Text("${tr("Tous", "All")} (${sessions.size})", fontWeight = FontWeight.Bold) })
-            FilterChip(selected = tab == "PRESENTS", onClick = { tab = "PRESENTS" }, label = { Text(tr("Présents", "Parked"), fontWeight = FontWeight.Bold) })
-            FilterChip(selected = tab == "SORTIS", onClick = { tab = "SORTIS" }, label = { Text(tr("Sortis", "Exited"), fontWeight = FontWeight.Bold) })
+            FilterChip(
+                selected = tab == "TOUS",
+                onClick = { tab = "TOUS" },
+                label = { Text("${tr("Tous", "All")} (${sessions.size})", fontWeight = FontWeight.Bold) },
+                colors = parkoFilterChipColors(),
+                border = parkoFilterChipBorder(tab == "TOUS")
+            )
+            FilterChip(
+                selected = tab == "PRESENTS",
+                onClick = { tab = "PRESENTS" },
+                label = { Text(tr("Présents", "Parked"), fontWeight = FontWeight.Bold) },
+                colors = parkoFilterChipColors(),
+                border = parkoFilterChipBorder(tab == "PRESENTS")
+            )
+            FilterChip(
+                selected = tab == "SORTIS",
+                onClick = { tab = "SORTIS" },
+                label = { Text(tr("Sortis", "Exited"), fontWeight = FontWeight.Bold) },
+                colors = parkoFilterChipColors(),
+                border = parkoFilterChipBorder(tab == "SORTIS")
+            )
         }
 
         LazyColumn(
@@ -967,7 +1608,7 @@ fun ProHistoryScreen(
                         Column(horizontalAlignment = Alignment.End) {
                             SessionStatusBadge(s.status)
                             Spacer(Modifier.height(4.dp))
-                            Text(formatFcfa(s.feeFcfa), fontFamily = JetBrainsMonoFamily, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                            Text(formatFcfa(s.feeFcfa), fontFamily = ParkoMonoFamily, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
@@ -1018,7 +1659,13 @@ fun FinancialReportsScreen(
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("7j" to tr("7j", "7d"), "30j" to tr("30j", "30d"), "90j" to tr("90j", "90d")).forEach { (key, label) ->
-                    FilterChip(selected = period == key, onClick = { period = key }, label = { Text(label, fontWeight = FontWeight.Bold) })
+                    FilterChip(
+                        selected = period == key,
+                        onClick = { period = key },
+                        label = { Text(label, fontWeight = FontWeight.Bold) },
+                        colors = parkoFilterChipColors(),
+                        border = parkoFilterChipBorder(period == key)
+                    )
                 }
             }
 
@@ -1039,7 +1686,7 @@ fun FinancialReportsScreen(
                                 text = formatFcfa(totalConfirmed),
                                 style = MaterialTheme.typography.headlineMedium,
                                 fontWeight = FontWeight.Bold,
-                                fontFamily = JetBrainsMonoFamily
+                                fontFamily = ParkoMonoFamily
                             )
                             Text(tr("Revenus ($period)", "Revenue ($period)"), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -1048,14 +1695,14 @@ fun FinancialReportsScreen(
 
                     RevenueBarChart(values = chartData, modifier = Modifier.fillMaxWidth())
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Filled.Payments, contentDescription = null, tint = ParkoAmber, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text(tr("Espèces", "Cash"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                         }
-                        Text(formatFcfa(cashTotal), fontWeight = FontWeight.Bold, fontFamily = JetBrainsMonoFamily)
+                        Text(formatFcfa(cashTotal), fontWeight = FontWeight.Bold, fontFamily = ParkoMonoFamily)
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1063,11 +1710,11 @@ fun FinancialReportsScreen(
                             Spacer(Modifier.width(8.dp))
                             Text("Mobile Money", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                         }
-                        Text(formatFcfa(momoTotal), fontWeight = FontWeight.Bold, fontFamily = JetBrainsMonoFamily)
+                        Text(formatFcfa(momoTotal), fontWeight = FontWeight.Bold, fontFamily = ParkoMonoFamily)
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(tr("En attente", "Pending"), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = ParkoAmberDark)
-                        Text(formatFcfa(pendingTotal), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, fontFamily = JetBrainsMonoFamily, color = ParkoAmberDark)
+                        Text(formatFcfa(pendingTotal), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, fontFamily = ParkoMonoFamily, color = ParkoAmberDark)
                     }
                 }
             }
@@ -1124,6 +1771,11 @@ fun AttendantsScreen(
             actions = {
                 FilledTonalButton(
                     onClick = { showInviteDialog = true },
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = ParkoBlueLight,
+                        contentColor = ParkoBlueDark
+                    ),
+                    border = BorderStroke(1.2.dp, ParkoBlue.copy(alpha = 0.45f)),
                     modifier = Modifier.testTag("invite_attendant_button")
                 ) {
                     Text(tr("Inviter +", "Invite +"), fontWeight = FontWeight.Bold)
@@ -1211,18 +1863,22 @@ fun AttendantsScreen(
             title = { Text(tr("Inviter un gardien", "Invite an attendant"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(tr("Nom complet *", "Full name *")) })
-                    OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text(tr("Téléphone (+228...) *", "Phone (+228...) *")) })
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(tr("Nom complet *", "Full name *")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text(tr("Téléphone (+228...) *", "Phone (+228...) *")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilterChip(
                             selected = role == UserRole.ATTENDANT,
                             onClick = { role = UserRole.ATTENDANT },
-                            label = { Text(UserRole.ATTENDANT.localizedLabel(en), fontWeight = FontWeight.Bold) }
+                            label = { Text(UserRole.ATTENDANT.localizedLabel(en), fontWeight = FontWeight.Bold) },
+                            colors = parkoFilterChipColors(),
+                            border = parkoFilterChipBorder(role == UserRole.ATTENDANT)
                         )
                         FilterChip(
                             selected = role == UserRole.SUPERVISOR,
                             onClick = { role = UserRole.SUPERVISOR },
-                            label = { Text(UserRole.SUPERVISOR.localizedLabel(en), fontWeight = FontWeight.Bold) }
+                            label = { Text(UserRole.SUPERVISOR.localizedLabel(en), fontWeight = FontWeight.Bold) },
+                            colors = parkoFilterChipColors(),
+                            border = parkoFilterChipBorder(role == UserRole.SUPERVISOR)
                         )
                     }
                 }
@@ -1330,7 +1986,7 @@ fun IncidentsScreen(
                             Text(t.localizedLabel(en), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                         }
                     }
-                    OutlinedTextField(value = desc, onValueChange = { desc = it }, label = { Text("Description *") })
+                    OutlinedTextField(value = desc, onValueChange = { desc = it }, label = { Text("Description *") }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
                 }
             },
             confirmButton = {

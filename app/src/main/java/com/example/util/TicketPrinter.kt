@@ -125,6 +125,13 @@ object TicketPrinter {
         private fun drawTicketPage(canvas: android.graphics.Canvas, width: Float, height: Float) {
             canvas.drawColor(Color.WHITE)
 
+            val outfitBase = androidx.core.content.res.ResourcesCompat.getFont(activity, com.example.R.font.outfit)
+                ?: Typeface.SANS_SERIF
+            val dmSansBase = androidx.core.content.res.ResourcesCompat.getFont(activity, com.example.R.font.dm_sans)
+                ?: Typeface.SANS_SERIF
+            val robotoMonoBase = androidx.core.content.res.ResourcesCompat.getFont(activity, com.example.R.font.roboto_mono)
+                ?: Typeface.MONOSPACE
+
             val centerX = width / 2f
             val margin = 20f
             var y = 30f
@@ -132,31 +139,31 @@ object TicketPrinter {
             val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.rgb(14, 84, 222)
                 textSize = 20f
-                typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+                typeface = Typeface.create(outfitBase, Typeface.BOLD)
                 textAlign = Paint.Align.CENTER
             }
             val subHeaderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.rgb(15, 23, 42)
                 textSize = 11f
-                typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+                typeface = Typeface.create(outfitBase, Typeface.BOLD)
                 textAlign = Paint.Align.CENTER
             }
             val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.rgb(71, 85, 105)
                 textSize = 9.5f
-                typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+                typeface = Typeface.create(dmSansBase, Typeface.NORMAL)
                 textAlign = Paint.Align.LEFT
             }
             val valuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.rgb(15, 23, 42)
                 textSize = 10f
-                typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+                typeface = Typeface.create(dmSansBase, Typeface.BOLD)
                 textAlign = Paint.Align.RIGHT
             }
             val codePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.rgb(15, 23, 42)
                 textSize = 16f
-                typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                typeface = Typeface.create(robotoMonoBase, Typeface.BOLD)
                 textAlign = Paint.Align.CENTER
             }
             val dashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -240,8 +247,16 @@ object TicketPrinter {
                 textAlign = Paint.Align.CENTER
             }
             canvas.drawText(
-                if (isEnglish) "Present this ticket or claim code in PARKO at exit."
-                else "Présentez ce ticket ou saisissez le code dans PARKO à la sortie.",
+                if (isEnglish) "Present this ticket + your confidential 6-digit code at exit."
+                else "Présentez ce ticket et votre code secret de retrait à la sortie.",
+                centerX,
+                y,
+                footerPaint
+            )
+            y += 11f
+            canvas.drawText(
+                if (isEnglish) "(Secret code omitted for security)"
+                else "(Code confidentiel non imprimé par sécurité)",
                 centerX,
                 y,
                 footerPaint

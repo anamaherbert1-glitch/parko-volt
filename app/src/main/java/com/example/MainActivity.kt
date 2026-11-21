@@ -1,5 +1,8 @@
 package com.example
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,7 +26,9 @@ class MainActivity : ComponentActivity() {
 
         val db = ParkoDatabase.getInstance(applicationContext)
         val prefs = SessionPreferences(applicationContext)
-        val repository = ParkoRepository(db.parkoDao(), prefs)
+        val repository = ParkoRepository(db.parkoDao(), prefs).apply {
+            isOnlineProvider = { isNetworkConnected(applicationContext) }
+        }
 
         setContent {
             val parkoViewModel: ParkoViewModel = viewModel(
@@ -38,6 +43,18 @@ class MainActivity : ComponentActivity() {
             ParkoTheme(darkTheme = darkTheme) {
                 ParkoApp(viewModel = parkoViewModel)
             }
+        }
+    }
+
+    private fun isNetworkConnected(context: Context): Boolean {
+        return try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                ?: return true
+            val network = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } catch (_: Throwable) {
+            true
         }
     }
 }

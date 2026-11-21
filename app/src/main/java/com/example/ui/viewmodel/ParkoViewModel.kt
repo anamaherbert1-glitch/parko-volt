@@ -19,11 +19,23 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
     private val _toastMessage = MutableStateFlow<String?>(null)
     val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
 
+    private val _lastCreatedPlainCode = MutableStateFlow<String?>(null)
+    val lastCreatedPlainCode: StateFlow<String?> = _lastCreatedPlainCode.asStateFlow()
+
+    private val _isOnline = MutableStateFlow(repository.isOnlineProvider())
+    val isOnline: StateFlow<Boolean> = _isOnline.asStateFlow()
+
     init {
         viewModelScope.launch {
             repository.ensureSeeded()
             _isReady.value = true
         }
+    }
+
+    fun refreshConnectivity(): Boolean {
+        val online = repository.isOnlineProvider()
+        _isOnline.value = online
+        return online
     }
 
     val loggedInUserId: StateFlow<String?> = repository.loggedInUserId
@@ -77,10 +89,26 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
     val allParkings: StateFlow<List<ParkingLocationEntity>> = repository.observeAllParkings()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val activeParking: StateFlow<ParkingLocationEntity?> = combine(currentUser, allParkings) { user, parkings ->
-        if (user == null) null
-        else if (user.role == UserRole.MANAGER.name) parkings.firstOrNull { it.managerUserId == user.id }
-        else parkings.firstOrNull { it.managerUserId == user.id } ?: parkings.firstOrNull()
+    val allAttendants: StateFlow<List<AttendantEntity>> = repository.observeAllAttendants()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
+     * Strictly resolves the user's assigned parking. Never falls back to an arbitrary parking.
+     */
+    val activeParking: StateFlow<ParkingLocationEntity?> = combine(
+        currentUser,
+        allParkings,
+        allAttendants
+    ) { user, parkings, attendants ->
+        if (user == null || user.isSuspended) return@combine null
+        when (UserRole.entries.firstOrNull { it.name == user.role } ?: UserRole.USER) {
+            UserRole.MANAGER -> parkings.firstOrNull { it.managerUserId == user.id }
+            UserRole.ATTENDANT, UserRole.SUPERVISOR -> {
+                val activeAssignment = attendants.firstOrNull { it.userId == user.id && it.isActive }
+                activeAssignment?.let { att -> parkings.firstOrNull { it.id == att.parkingId } }
+            }
+            UserRole.SUPER_ADMIN, UserRole.USER -> null
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val proSessions: StateFlow<List<ParkingSessionEntity>> = activeParking
@@ -107,6 +135,12 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val proRecoveries: StateFlow<List<ExceptionalRecoveryEntity>> = activeParking
+        .flatMapLatest { parking ->
+            if (parking == null) flowOf(emptyList()) else repository.observeParkingRecoveries(parking.id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     // Super-Admin streams
     val allUsers: StateFlow<List<UserEntity>> = repository.observeAllUsers()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -116,23 +150,31 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val allApplications: StateFlow<List<ManagerApplicationEntity>> = repository.observeAllApplications()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val allAttendants: StateFlow<List<AttendantEntity>> = repository.observeAllAttendants()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val allIncidents: StateFlow<List<IncidentEntity>> = repository.observeAllIncidents()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val allAuditLogs: StateFlow<List<AuditLogEntity>> = repository.observeAllAuditLogs()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val canAccessProSpace: StateFlow<Boolean> = combine(currentUser, activeParking) { user, parking ->
-        if (user == null) false
-        else {
-            val role = UserRole.entries.firstOrNull { it.name == user.role } ?: UserRole.USER
-            when (role) {
-                UserRole.ATTENDANT, UserRole.SUPERVISOR -> true
-                UserRole.MANAGER -> parking?.subscriptionActive == true && parking.subscriptionExpiresAt > System.currentTimeMillis()
-                UserRole.SUPER_ADMIN -> true
-                UserRole.USER -> false
+    val canAccessProSpace: StateFlow<Boolean> = combine(
+        currentUser,
+        activeParking,
+        allAttendants
+    ) { user, parking, attendants ->
+        if (user == null || user.isSuspended || parking == null || parking.isSuspended) {
+            return@combine false
+        }
+        val role = UserRole.entries.firstOrNull { it.name == user.role } ?: UserRole.USER
+        when (role) {
+            UserRole.ATTENDANT, UserRole.SUPERVISOR -> {
+                attendants.any { it.userId == user.id && it.parkingId == parking.id && it.isActive } &&
+                    parking.subscriptionActive
             }
+            UserRole.MANAGER -> {
+                parking.managerUserId == user.id &&
+                    parking.subscriptionActive &&
+                    parking.subscriptionExpiresAt > System.currentTimeMillis()
+            }
+            UserRole.SUPER_ADMIN, UserRole.USER -> false
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
@@ -144,14 +186,28 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
         _toastMessage.value = msg
     }
 
+    fun clearCreatedSecretCode() {
+        _lastCreatedPlainCode.value = null
+    }
+
+    fun touchProSession() {
+        viewModelScope.launch {
+            if (repository.checkProSessionExpired(currentUser.value)) {
+                _toastMessage.value = "Session professionnelle expirée. Veuillez la rouvrir."
+            } else {
+                repository.refreshProActivity()
+            }
+        }
+    }
+
     fun switchSpace(space: AppSpace) {
         viewModelScope.launch {
             val en = language.value.equals("English", ignoreCase = true)
             if (space == AppSpace.PRO && !canAccessProSpace.value) {
                 _toastMessage.value = if (en) {
-                    "Choose and activate a subscription based on your parking size first."
+                    "Pro access unavailable: an approved manager with active subscription or active assignment is required."
                 } else {
-                    "Choisissez et activez d'abord un abonnement adapté à votre parking."
+                    "Accès Pro indisponible : un abonnement actif ou une affectation active est requis."
                 }
                 return@launch
             }
@@ -216,9 +272,9 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
         }
     }
 
-    fun resetPassword(phone: String, newPassword: String, onSuccess: () -> Unit) {
+    fun resetPassword(phone: String, newPassword: String, otpCode: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
-            repository.resetPasswordByPhone(phone, newPassword)
+            repository.resetPasswordByPhone(phone, newPassword, otpCode)
                 .onSuccess {
                     _toastMessage.value = "Mot de passe réinitialisé avec succès."
                     onSuccess()
@@ -228,6 +284,7 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
     }
 
     fun logout() {
+        _lastCreatedPlainCode.value = null
         viewModelScope.launch { repository.logout() }
     }
 
@@ -312,7 +369,8 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
         val admin = currentUser.value ?: return
         viewModelScope.launch {
             repository.reviewApplication(admin, application, newStatus, note)
-            _toastMessage.value = "Décision enregistrée : ${newStatus.label}"
+                .onSuccess { _toastMessage.value = "Décision enregistrée : ${newStatus.label}" }
+                .onFailure { _toastMessage.value = it.message }
         }
     }
 
@@ -339,9 +397,9 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
                 .onSuccess { record ->
                     if (record != null && record.status == PaymentStatus.PENDING.name) {
                         _toastMessage.value = if (en) {
-                            "${method.label} payment awaiting provider confirmation."
+                            "${method.label} payment awaiting Admin/provider confirmation."
                         } else {
-                            "Paiement ${method.label} en attente de confirmation prestataire."
+                            "Paiement ${method.label} enregistré en attente de validation PARKO."
                         }
                     } else {
                         _toastMessage.value = if (en) {
@@ -364,7 +422,8 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
         val parking = allParkings.value.firstOrNull { it.id == payment.parkingId }
         viewModelScope.launch {
             repository.confirmPendingSubscriptionPayment(admin, payment, parking)
-            _toastMessage.value = "Paiement d'abonnement confirmé"
+                .onSuccess { _toastMessage.value = "Paiement d'abonnement confirmé" }
+                .onFailure { _toastMessage.value = it.message }
         }
     }
 
@@ -386,11 +445,13 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
             repository.registerVehicleEntry(
                 actor, parking, vehicleType, plateNumber, brandModel,
                 color, ownerName, ownerPhone, feeFcfa, paymentMethod, photoUri
-            ).onSuccess { session ->
-                if (session.ownerUserId != null) {
-                    _toastMessage.value = "Ticket QR envoyé directement au compte de ${session.ownerName}"
+            ).onSuccess { result ->
+                repository.refreshProActivity()
+                _lastCreatedPlainCode.value = result.plainWithdrawalCode
+                if (result.session.ownerUserId != null) {
+                    _toastMessage.value = "Ticket QR envoyé directement au compte de ${result.session.ownerName}"
                 }
-                onSuccess(session)
+                onSuccess(result.session)
             }.onFailure { _toastMessage.value = it.message }
         }
     }
@@ -415,10 +476,10 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
         }
     }
 
-    fun claimTicketByCode(code: String, onSuccess: (ParkingSessionEntity) -> Unit) {
+    fun claimTicketByCode(code: String, verifyingPlate: String, onSuccess: (ParkingSessionEntity) -> Unit) {
         val user = currentUser.value ?: return
         viewModelScope.launch {
-            repository.claimTicketByCode(user, code)
+            repository.claimTicketByCode(user, code, verifyingPlate)
                 .onSuccess { updated ->
                     val en = language.value.equals("English", ignoreCase = true)
                     _toastMessage.value = if (en) {
@@ -432,49 +493,168 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
         }
     }
 
-    fun scanSessionByQuery(query: String, onFound: (ParkingSessionEntity) -> Unit, onNotFound: () -> Unit) {
-        val clean = query.trim()
-        if (clean.isBlank()) {
-            onNotFound()
-            return
-        }
-        val actor = currentUser.value
-        val match = proSessions.value.firstOrNull {
-            it.qrToken.equals(clean, ignoreCase = true) ||
-                it.referenceCode.equals(clean, ignoreCase = true) ||
-                it.plateNumber.replace("-", "").contains(clean.replace("-", ""), ignoreCase = true) ||
-                it.ownerPhone.replace(" ", "").contains(clean.replace(" ", ""), ignoreCase = true)
-        }
-        if (match != null) {
-            if (actor != null) {
-                viewModelScope.launch { repository.recordQrScan(actor, match) }
-            }
-            onFound(match)
-        } else {
-            onNotFound()
+    fun scanSessionByQuery(
+        query: String,
+        onFound: (ParkingSessionEntity) -> Unit,
+        onNotFound: () -> Unit
+    ) {
+        val actor = currentUser.value ?: return
+        val parking = activeParking.value ?: return
+        viewModelScope.launch {
+            repository.lookupParkingSessionForScan(actor, parking.id, query)
+                .onSuccess { found ->
+                    repository.refreshProActivity()
+                    onFound(found)
+                }
+                .onFailure {
+                    _toastMessage.value = it.message
+                    onNotFound()
+                }
         }
     }
 
-    fun verifySessionMobileMoney(session: ParkingSessionEntity, method: PaymentMethod, onUpdated: (ParkingSessionEntity) -> Unit) {
+    fun beginExitVerification(
+        session: ParkingSessionEntity,
+        onReady: (ParkingSessionEntity) -> Unit,
+        onBlocked: (String) -> Unit
+    ) {
         val actor = currentUser.value ?: return
         viewModelScope.launch {
-            val updated = repository.verifyMobileMoneySessionPayment(actor, session, method)
-            _toastMessage.value = "Paiement ${method.label} vérifié"
-            onUpdated(updated)
+            repository.beginExitVerification(actor, session)
+                .onSuccess { locked -> onReady(locked) }
+                .onFailure {
+                    val msg = it.message ?: "Sortie déjà en cours"
+                    _toastMessage.value = msg
+                    onBlocked(msg)
+                }
+        }
+    }
+
+    fun cancelExitVerification(session: ParkingSessionEntity) {
+        val actor = currentUser.value ?: return
+        viewModelScope.launch {
+            repository.cancelExitVerification(actor, session)
+        }
+    }
+
+    fun verifyWithdrawalCode(
+        session: ParkingSessionEntity,
+        inputCode: String,
+        onUpdated: (ParkingSessionEntity) -> Unit
+    ) {
+        val actor = currentUser.value ?: return
+        viewModelScope.launch {
+            repository.verifyWithdrawalCode(actor, session, inputCode)
+                .onSuccess { updated ->
+                    repository.refreshProActivity()
+                    _toastMessage.value = "Code secret de retrait vérifié"
+                    onUpdated(updated)
+                }
+                .onFailure { _toastMessage.value = it.message }
+        }
+    }
+
+    fun unlockBlockedWithdrawal(
+        session: ParkingSessionEntity,
+        reason: String,
+        onUpdated: (ParkingSessionEntity) -> Unit
+    ) {
+        val actor = currentUser.value ?: return
+        viewModelScope.launch {
+            repository.unlockBlockedWithdrawal(actor, session, reason)
+                .onSuccess { updated ->
+                    _toastMessage.value = "Blocage levé par le responsable"
+                    onUpdated(updated)
+                }
+                .onFailure { _toastMessage.value = it.message }
+        }
+    }
+
+    fun reportPhysicalMismatch(
+        session: ParkingSessionEntity,
+        description: String,
+        onUpdated: (ParkingSessionEntity) -> Unit
+    ) {
+        val actor = currentUser.value ?: return
+        viewModelScope.launch {
+            repository.reportPhysicalMismatch(actor, session, description)
+                .onSuccess { updated ->
+                    _toastMessage.value = "Attention : non-conformité enregistrée. Sortie refusée."
+                    onUpdated(updated)
+                }
+                .onFailure { _toastMessage.value = it.message }
+        }
+    }
+
+    fun submitExceptionalRecovery(
+        session: ParkingSessionEntity,
+        reasonType: String,
+        claimantName: String,
+        declaredPlateNumber: String,
+        description: String,
+        physicalCheckConfirmed: Boolean,
+        onSubmitted: () -> Unit
+    ) {
+        val actor = currentUser.value ?: return
+        viewModelScope.launch {
+            repository.submitExceptionalRecovery(
+                actor, session, reasonType, claimantName, declaredPlateNumber, description, physicalCheckConfirmed
+            ).onSuccess {
+                _toastMessage.value = "Demande de récupération exceptionnelle envoyée au gestionnaire."
+                onSubmitted()
+            }.onFailure { _toastMessage.value = it.message }
+        }
+    }
+
+    fun reviewExceptionalRecovery(
+        recovery: ExceptionalRecoveryEntity,
+        approve: Boolean,
+        decisionReason: String,
+        onDone: () -> Unit = {}
+    ) {
+        val reviewer = currentUser.value ?: return
+        viewModelScope.launch {
+            repository.reviewExceptionalRecovery(reviewer, recovery, approve, decisionReason)
+                .onSuccess {
+                    _toastMessage.value = if (approve) {
+                        "Récupération exceptionnelle approuvée"
+                    } else {
+                        "Récupération exceptionnelle refusée"
+                    }
+                    onDone()
+                }
+                .onFailure { _toastMessage.value = it.message }
+        }
+    }
+
+    fun verifySessionMobileMoney(
+        session: ParkingSessionEntity,
+        method: PaymentMethod,
+        onUpdated: (ParkingSessionEntity) -> Unit
+    ) {
+        val actor = currentUser.value ?: return
+        viewModelScope.launch {
+            repository.verifyMobileMoneySessionPayment(actor, session, method)
+                .onSuccess { updated ->
+                    _toastMessage.value = "Paiement ${method.label} vérifié"
+                    onUpdated(updated)
+                }
+                .onFailure { _toastMessage.value = it.message }
         }
     }
 
     fun authorizeExit(
         session: ParkingSessionEntity,
         physicalCheckConfirmed: Boolean,
-        withoutQr: Boolean,
         auditReason: String,
         onSuccess: (ParkingSessionEntity) -> Unit
     ) {
         val actor = currentUser.value ?: return
+        refreshConnectivity()
         viewModelScope.launch {
-            repository.authorizeExit(actor, session, physicalCheckConfirmed, withoutQr, auditReason)
+            repository.authorizeExit(actor, session, physicalCheckConfirmed, auditReason)
                 .onSuccess { updated ->
+                    repository.refreshProActivity()
                     _toastMessage.value = "Sortie validée pour ${updated.plateNumber}"
                     onSuccess(updated)
                 }
@@ -504,7 +684,8 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
         val actor = currentUser.value ?: return
         viewModelScope.launch {
             repository.resolveIncident(actor, incident, note)
-            _toastMessage.value = "Incident marqué comme résolu"
+                .onSuccess { _toastMessage.value = "Incident marqué comme résolu" }
+                .onFailure { _toastMessage.value = it.message }
         }
     }
 
@@ -523,17 +704,26 @@ class ParkoViewModel(private val repository: ParkoRepository) : ViewModel() {
 
     fun toggleAttendantStatus(attendant: AttendantEntity) {
         val manager = currentUser.value ?: return
-        viewModelScope.launch { repository.toggleAttendantStatus(manager, attendant) }
+        viewModelScope.launch {
+            repository.toggleAttendantStatus(manager, attendant)
+                .onFailure { _toastMessage.value = it.message }
+        }
     }
 
     fun toggleParkingSuspension(parking: ParkingLocationEntity) {
         val admin = currentUser.value ?: return
-        viewModelScope.launch { repository.toggleParkingSuspension(admin, parking) }
+        viewModelScope.launch {
+            repository.toggleParkingSuspension(admin, parking)
+                .onFailure { _toastMessage.value = it.message }
+        }
     }
 
     fun toggleUserSuspension(user: UserEntity) {
         val admin = currentUser.value ?: return
-        viewModelScope.launch { repository.toggleUserSuspension(admin, user) }
+        viewModelScope.launch {
+            repository.toggleUserSuspension(admin, user)
+                .onFailure { _toastMessage.value = it.message }
+        }
     }
 
     class Factory(private val repository: ParkoRepository) : ViewModelProvider.Factory {

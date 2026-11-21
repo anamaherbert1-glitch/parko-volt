@@ -4,7 +4,9 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,6 +40,7 @@ import com.example.data.model.*
 import com.example.ui.components.*
 import com.example.ui.i18n.*
 import com.example.ui.theme.*
+import com.example.util.SecurityUtils
 import com.example.util.TicketPrinter
 
 @Composable
@@ -497,6 +500,7 @@ private fun QuickActionTile(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp,
+        shadowElevation = 2.dp,
         modifier = modifier.parkoCardOutline(20.dp)
     ) {
         Column(
@@ -509,8 +513,8 @@ private fun QuickActionTile(
                     modifier = Modifier
                         .size(56.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(tint.copy(alpha = 0.18f))
-                        .parkoCardOutline(16.dp),
+                        .background(tint.copy(alpha = 0.16f))
+                        .border(1.3.dp, tint.copy(alpha = 0.42f), RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(30.dp))
@@ -597,7 +601,7 @@ fun VehiclesScreen(
                                 Text(
                                     text = vehicle.plateNumber,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontFamily = JetBrainsMonoFamily,
+                                    fontFamily = ParkoMonoFamily,
                                     fontWeight = FontWeight.Bold,
                                     color = ParkoBlue
                                 )
@@ -692,6 +696,8 @@ private fun AddEditVehicleDialog(
                             selected = selectedType == type,
                             onClick = { selectedType = type },
                             label = { Text(type.localizedLabel(en), maxLines = 1, fontWeight = FontWeight.SemiBold) },
+                            colors = parkoFilterChipColors(),
+                            border = parkoFilterChipBorder(selectedType == type),
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -705,6 +711,8 @@ private fun AddEditVehicleDialog(
                             selected = selectedType == type,
                             onClick = { selectedType = type },
                             label = { Text(type.localizedLabel(en), maxLines = 1, fontWeight = FontWeight.SemiBold) },
+                            colors = parkoFilterChipColors(),
+                            border = parkoFilterChipBorder(selectedType == type),
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -714,25 +722,37 @@ private fun AddEditVehicleDialog(
                     value = plate,
                     onValueChange = { plate = it.uppercase() },
                     label = { Text(tr("Immatriculation * (ex: TG-1234-AA)", "License plate * (e.g. TG-1234-AA)")) },
-                    singleLine = true
+                    singleLine = true,
+                    colors = parkoTextFieldColors(),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = brand,
                     onValueChange = { brand = it },
                     label = { Text(tr("Marque", "Brand")) },
-                    singleLine = true
+                    singleLine = true,
+                    colors = parkoTextFieldColors(),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = model,
                     onValueChange = { model = it },
                     label = { Text(tr("Modèle", "Model")) },
-                    singleLine = true
+                    singleLine = true,
+                    colors = parkoTextFieldColors(),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = color,
                     onValueChange = { color = it },
                     label = { Text(tr("Couleur", "Color")) },
-                    singleLine = true
+                    singleLine = true,
+                    colors = parkoTextFieldColors(),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedButton(
                     onClick = {
@@ -765,14 +785,18 @@ private fun AddEditVehicleDialog(
 fun TicketsScreen(
     sessions: List<ParkingSessionEntity>,
     onOpenTicketDetail: (ParkingSessionEntity) -> Unit,
-    onClaimTicket: (String, () -> Unit) -> Unit
+    onClaimTicket: (String, String, () -> Unit) -> Unit
 ) {
     var filter by remember { mutableStateOf("ACTIFS") }
     var showClaimDialog by remember { mutableStateOf(false) }
 
     val filtered = remember(sessions, filter) {
         when (filter) {
-            "ACTIFS" -> sessions.filter { it.status == SessionStatus.ACTIVE.name || it.status == SessionStatus.NEEDS_VERIFICATION.name }
+            "ACTIFS" -> sessions.filter {
+                it.status == SessionStatus.ACTIVE.name ||
+                    it.status == SessionStatus.EXIT_PENDING.name ||
+                    it.status == SessionStatus.NEEDS_VERIFICATION.name
+            }
             "TERMINES" -> sessions.filter { it.status == SessionStatus.COMPLETED.name }
             else -> sessions
         }
@@ -784,6 +808,11 @@ fun TicketsScreen(
             actions = {
                 FilledTonalButton(
                     onClick = { showClaimDialog = true },
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = ParkoBlueLight,
+                        contentColor = ParkoBlueDark
+                    ),
+                    border = BorderStroke(1.2.dp, ParkoBlue.copy(alpha = 0.45f)),
                     modifier = Modifier.testTag("claim_ticket_button")
                 ) {
                     Icon(Icons.Filled.QrCode, contentDescription = null, modifier = Modifier.size(20.dp))
@@ -827,9 +856,27 @@ fun TicketsScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterChip(selected = filter == "ACTIFS", onClick = { filter = "ACTIFS" }, label = { Text(tr("Actifs", "Active"), fontWeight = FontWeight.Bold) })
-            FilterChip(selected = filter == "TERMINES", onClick = { filter = "TERMINES" }, label = { Text(tr("Terminés", "Completed"), fontWeight = FontWeight.Bold) })
-            FilterChip(selected = filter == "TOUS", onClick = { filter = "TOUS" }, label = { Text(tr("Tous", "All"), fontWeight = FontWeight.Bold) })
+            FilterChip(
+                selected = filter == "ACTIFS",
+                onClick = { filter = "ACTIFS" },
+                label = { Text(tr("Actifs", "Active"), fontWeight = FontWeight.Bold) },
+                colors = parkoFilterChipColors(),
+                border = parkoFilterChipBorder(filter == "ACTIFS")
+            )
+            FilterChip(
+                selected = filter == "TERMINES",
+                onClick = { filter = "TERMINES" },
+                label = { Text(tr("Terminés", "Completed"), fontWeight = FontWeight.Bold) },
+                colors = parkoFilterChipColors(),
+                border = parkoFilterChipBorder(filter == "TERMINES")
+            )
+            FilterChip(
+                selected = filter == "TOUS",
+                onClick = { filter = "TOUS" },
+                label = { Text(tr("Tous", "All"), fontWeight = FontWeight.Bold) },
+                colors = parkoFilterChipColors(),
+                border = parkoFilterChipBorder(filter == "TOUS")
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -878,7 +925,7 @@ fun TicketsScreen(
                                 Text(
                                     "${ticket.plateNumber} • ${ticket.referenceCode}",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontFamily = JetBrainsMonoFamily,
+                                    fontFamily = ParkoMonoFamily,
                                     fontWeight = FontWeight.Bold,
                                     color = ParkoBlue
                                 )
@@ -898,26 +945,45 @@ fun TicketsScreen(
 
     if (showClaimDialog) {
         var code by remember { mutableStateOf("") }
+        var plate by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showClaimDialog = false },
             title = { Text(tr("Recevoir un ticket", "Receive a ticket"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        tr(
+                            "Saisissez la référence PK-XXXXYY et la plaque du véhicule. Votre numéro de téléphone doit correspondre à l'entrée.",
+                            "Enter the PK-XXXXYY reference and vehicle plate. Your phone number must match the entry record."
+                        ),
+                        style = MaterialTheme.typography.bodySmall
+                    )
                     OutlinedTextField(
                         value = code,
                         onValueChange = { code = it.uppercase() },
-                        label = { Text(tr("Code du ticket (ex: PK-4420GM) *", "Ticket code (e.g. PK-4420GM) *")) },
+                        label = { Text(tr("Référence du ticket (ex: PK-4420GM) *", "Ticket reference (e.g. PK-4420GM) *")) },
                         singleLine = true,
+                        colors = parkoTextFieldColors(),
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth().testTag("claim_code_input")
+                    )
+                    OutlinedTextField(
+                        value = plate,
+                        onValueChange = { plate = it.uppercase() },
+                        label = { Text(tr("Plaque d'immatriculation *", "Vehicle plate *")) },
+                        singleLine = true,
+                        colors = parkoTextFieldColors(),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("claim_plate_input")
                     )
                 }
             },
             confirmButton = {
                 Button(
-                    onClick = { onClaimTicket(code) { showClaimDialog = false } },
+                    onClick = { onClaimTicket(code, plate) { showClaimDialog = false } },
                     modifier = Modifier.testTag("claim_confirm_button")
                 ) {
-                    Text(tr("Valider & afficher le QR", "Claim & show QR"), fontWeight = FontWeight.Bold)
+                    Text(tr("Vérifier & rattacher", "Verify & claim"), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -931,6 +997,7 @@ fun TicketsScreen(
 fun TicketDetailScreen(
     session: ParkingSessionEntity,
     isProSender: Boolean = false,
+    generatedSecretCode: String? = null,
     onBack: () -> Unit,
     onSendToClient: ((String) -> Unit)? = null,
     onSavedNotice: (String) -> Unit
@@ -941,6 +1008,12 @@ fun TicketDetailScreen(
 
     var clientPhoneInput by remember(session.ownerPhone) {
         mutableStateOf(session.ownerPhone.ifBlank { "+228 " })
+    }
+    var revealOwnerSecret by remember { mutableStateOf(false) }
+    val ownerSecretCode = remember(session.id, session.encryptedWithdrawalCode, session.status) {
+        if (!isProSender && session.status != SessionStatus.COMPLETED.name) {
+            SecurityUtils.decryptSensitiveText(session.encryptedWithdrawalCode)
+        } else null
     }
 
     Column(
@@ -982,7 +1055,7 @@ fun TicketDetailScreen(
                         Text(
                             text = session.referenceCode,
                             style = MaterialTheme.typography.headlineMedium,
-                            fontFamily = JetBrainsMonoFamily,
+                            fontFamily = ParkoMonoFamily,
                             fontWeight = FontWeight.Bold,
                             color = ParkoBlueDark,
                             modifier = Modifier.testTag("generated_claim_code")
@@ -1020,6 +1093,44 @@ fun TicketDetailScreen(
                         }
                     }
                 }
+                if (!generatedSecretCode.isNullOrBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = ParkoAmberLight,
+                        contentColor = ParkoCharcoal,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp).parkoCardOutline(18.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                tr("Code secret de retrait (confidentiel)", "Secret withdrawal code (confidential)"),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = ParkoAmberDark
+                            )
+                            Text(
+                                text = generatedSecretCode,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontFamily = ParkoMonoFamily,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = ParkoCharcoal,
+                                modifier = Modifier.testTag("created_secret_withdrawal_code")
+                            )
+                            Text(
+                                tr(
+                                    "À communiquer confidentiellement au client uniquement. Non inclus dans le QR code ni imprimé.",
+                                    "Give confidentially to the owner only. Never included in QR or printed receipt."
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = ParkoCharcoal
+                            )
+                        }
+                    }
+                }
             }
 
             Surface(
@@ -1047,7 +1158,7 @@ fun TicketDetailScreen(
                     Text(
                         text = session.plateNumber,
                         style = MaterialTheme.typography.titleMedium,
-                        fontFamily = JetBrainsMonoFamily,
+                        fontFamily = ParkoMonoFamily,
                         fontWeight = FontWeight.Bold,
                         color = ParkoBlue
                     )
@@ -1082,6 +1193,42 @@ fun TicketDetailScreen(
                             icon = Icons.Filled.CheckCircle
                         )
                     }
+                    if (ownerSecretCode != null) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(
+                            onClick = { revealOwnerSecret = !revealOwnerSecret },
+                            shape = RoundedCornerShape(14.dp),
+                            color = ParkoAmberLight,
+                            contentColor = ParkoCharcoal,
+                            modifier = Modifier.fillMaxWidth().parkoCardOutline(14.dp).testTag("owner_secret_code_card")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        tr("Code secret de retrait", "Secret withdrawal code"),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = ParkoAmberDark
+                                    )
+                                    Text(
+                                        text = if (revealOwnerSecret) ownerSecretCode else "••••••",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontFamily = ParkoMonoFamily,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
+                                Icon(
+                                    imageVector = if (revealOwnerSecret) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    contentDescription = tr("Afficher ou masquer le code secret", "Show or hide secret code"),
+                                    tint = ParkoAmberDark
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -1107,6 +1254,8 @@ fun TicketDetailScreen(
                             onValueChange = { clientPhoneInput = it },
                             label = { Text(tr("Téléphone du client (+228...)", "Client phone (+228...)")) },
                             singleLine = true,
+                            colors = parkoTextFieldColors(),
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.fillMaxWidth().testTag("send_qr_phone_input")
                         )
                         Button(
@@ -1126,23 +1275,25 @@ fun TicketDetailScreen(
 
             Button(
                 onClick = {
+                    val vType = VehicleType.entries.firstOrNull { it.name == session.vehicleType }?.localizedLabel(en)
+                        ?: session.vehicleType
                     val shareText = if (en) {
-                        "PARKO Ticket\nCode: ${session.referenceCode}\nVehicle: ${session.vehicleLabel} (${session.plateNumber})\nParking: ${session.parkingName}\nToken: ${session.qrToken}"
+                        "PARKO Ticket Summary\nReference: ${session.referenceCode}\nParking: ${session.parkingName}\nVehicle Type: $vType\nPlate: ${session.plateNumber}\nEntry: ${formatDateTime(session.entryTime)}"
                     } else {
-                        "Ticket PARKO\nCode: ${session.referenceCode}\nVéhicule: ${session.vehicleLabel} (${session.plateNumber})\nParking: ${session.parkingName}\nJeton: ${session.qrToken}"
+                        "Récapitulatif Ticket PARKO\nRéférence: ${session.referenceCode}\nParking: ${session.parkingName}\nType: $vType\nPlaque: ${session.plateNumber}\nEntrée: ${formatDateTime(session.entryTime)}"
                     }
                     val intent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
                         putExtra(Intent.EXTRA_TEXT, shareText)
                     }
-                    context.startActivity(Intent.createChooser(intent, if (en) "Share PARKO ticket" else "Partager le ticket PARKO"))
+                    context.startActivity(Intent.createChooser(intent, if (en) "Share PARKO summary" else "Partager le récapitulatif PARKO"))
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp).testTag("share_ticket_button"),
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Icon(Icons.Filled.Share, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(tr("Partager le ticket", "Share ticket"), fontWeight = FontWeight.Bold)
+                Text(tr("Partager le récapitulatif", "Share summary"), fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -1188,9 +1339,27 @@ fun PersonalHistoryScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterChip(selected = filter == "TOUS", onClick = { filter = "TOUS" }, label = { Text(tr("Tous", "All"), fontWeight = FontWeight.Bold) })
-            FilterChip(selected = filter == "ENTREES", onClick = { filter = "ENTREES" }, label = { Text(tr("Entrées", "Entries"), fontWeight = FontWeight.Bold) })
-            FilterChip(selected = filter == "SORTIES", onClick = { filter = "SORTIES" }, label = { Text(tr("Sorties", "Exits"), fontWeight = FontWeight.Bold) })
+            FilterChip(
+                selected = filter == "TOUS",
+                onClick = { filter = "TOUS" },
+                label = { Text(tr("Tous", "All"), fontWeight = FontWeight.Bold) },
+                colors = parkoFilterChipColors(),
+                border = parkoFilterChipBorder(filter == "TOUS")
+            )
+            FilterChip(
+                selected = filter == "ENTREES",
+                onClick = { filter = "ENTREES" },
+                label = { Text(tr("Entrées", "Entries"), fontWeight = FontWeight.Bold) },
+                colors = parkoFilterChipColors(),
+                border = parkoFilterChipBorder(filter == "ENTREES")
+            )
+            FilterChip(
+                selected = filter == "SORTIES",
+                onClick = { filter = "SORTIES" },
+                label = { Text(tr("Sorties", "Exits"), fontWeight = FontWeight.Bold) },
+                colors = parkoFilterChipColors(),
+                border = parkoFilterChipBorder(filter == "SORTIES")
+            )
         }
 
         LazyColumn(
@@ -1449,6 +1618,8 @@ fun SettingsProfileScreen(
                                     }
                                     Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
                                 },
+                                colors = parkoFilterChipColors(),
+                                border = parkoFilterChipBorder(themeMode == mode),
                                 modifier = Modifier.weight(1f).testTag("theme_chip_${mode.name}")
                             )
                         }
@@ -1487,6 +1658,8 @@ fun SettingsProfileScreen(
                                         Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                                     }
                                 },
+                                colors = parkoFilterChipColors(),
+                                border = parkoFilterChipBorder(currentAppLang == langOption),
                                 modifier = Modifier.weight(1f).testTag("lang_chip_${langOption.name}")
                             )
                         }
@@ -1507,13 +1680,13 @@ fun SettingsProfileScreen(
                         title = tr("Mon profil", "My profile"),
                         onClick = { showEditProfile = true }
                     )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     ParkoMenuRow(
                         icon = Icons.Filled.DirectionsCar,
                         title = tr("Mes véhicules", "My vehicles"),
                         onClick = onOpenVehicles
                     )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     ParkoMenuRow(
                         icon = Icons.Filled.Notifications,
                         title = tr("Notifications", "Notifications"),
@@ -1546,7 +1719,7 @@ fun SettingsProfileScreen(
                             onClick = onSwitchToPro,
                             testTag = "settings_open_pro"
                         )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
                     ParkoMenuRow(
                         icon = Icons.Filled.WorkspacePremium,
@@ -1561,7 +1734,7 @@ fun SettingsProfileScreen(
                         testTag = "settings_become_manager"
                     )
                     if (application?.status == ApplicationStatus.APPROVED.name || user.role == UserRole.MANAGER.name) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         ParkoMenuRow(
                             icon = Icons.Filled.CreditScore,
                             title = tr("Abonnements PARKO", "PARKO Subscriptions"),
@@ -1572,7 +1745,7 @@ fun SettingsProfileScreen(
                         )
                     }
                     if (user.role == UserRole.SUPER_ADMIN.name) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         ParkoMenuRow(
                             icon = Icons.Filled.AdminPanelSettings,
                             title = tr("Administration PARKO", "PARKO Administration"),
@@ -1596,7 +1769,7 @@ fun SettingsProfileScreen(
                         title = tr("À propos & Sécurité", "About & Security"),
                         onClick = { showAbout = true }
                     )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     ParkoMenuRow(
                         icon = Icons.Filled.Logout,
                         title = tr("Déconnexion", "Sign out"),
@@ -1623,10 +1796,10 @@ fun SettingsProfileScreen(
             title = { Text(tr("Modifier mon profil", "Edit profile"), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(value = first, onValueChange = { first = it }, label = { Text(tr("Prénom", "First name")) })
-                    OutlinedTextField(value = last, onValueChange = { last = it }, label = { Text(tr("Nom", "Last name")) })
-                    OutlinedTextField(value = city, onValueChange = { city = it }, label = { Text(tr("Ville", "City")) })
-                    OutlinedTextField(value = neighborhood, onValueChange = { neighborhood = it }, label = { Text(tr("Quartier", "Neighborhood")) })
+                    OutlinedTextField(value = first, onValueChange = { first = it }, label = { Text(tr("Prénom", "First name")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = last, onValueChange = { last = it }, label = { Text(tr("Nom", "Last name")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = city, onValueChange = { city = it }, label = { Text(tr("Ville", "City")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = neighborhood, onValueChange = { neighborhood = it }, label = { Text(tr("Quartier", "Neighborhood")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = notifEnabled, onCheckedChange = { notifEnabled = it })
                         Spacer(Modifier.width(8.dp))

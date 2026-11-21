@@ -34,6 +34,9 @@ import com.example.ui.components.formatDateOnly
 import com.example.ui.components.formatFcfa
 import com.example.ui.components.parkoAtmosphericBackground
 import com.example.ui.components.parkoCardOutline
+import com.example.ui.components.parkoFilterChipBorder
+import com.example.ui.components.parkoFilterChipColors
+import com.example.ui.components.parkoTextFieldColors
 import com.example.ui.i18n.*
 import com.example.ui.theme.*
 
@@ -230,20 +233,20 @@ fun ManagerApplicationScreen(
                     progress = { step / 3f },
                     modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(50)),
                     color = ParkoBlue,
-                    trackColor = ParkoBlueLight
+                    trackColor = ParkoBlueSoft
                 )
             }
 
             when (step) {
                 1 -> {
                     Text(tr("Informations personnelles", "Personal information"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    OutlinedTextField(value = fullName, onValueChange = { fullName = it }, label = { Text(tr("Nom complet *", "Full name *")) }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = birthDate, onValueChange = { birthDate = it }, label = { Text(tr("Date de naissance", "Date of birth")) }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text(tr("Téléphone (+228...) *", "Phone (+228...) *")) }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text(tr("E-mail", "Email")) }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = fullName, onValueChange = { fullName = it }, label = { Text(tr("Nom complet *", "Full name *")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = birthDate, onValueChange = { birthDate = it }, label = { Text(tr("Date de naissance", "Date of birth")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text(tr("Téléphone (+228...) *", "Phone (+228...) *")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text(tr("E-mail", "Email")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedTextField(value = city, onValueChange = { city = it }, label = { Text(tr("Ville", "City")) }, modifier = Modifier.weight(1f))
-                        OutlinedTextField(value = neighborhood, onValueChange = { neighborhood = it }, label = { Text(tr("Quartier", "Neighborhood")) }, modifier = Modifier.weight(1f))
+                        OutlinedTextField(value = city, onValueChange = { city = it }, label = { Text(tr("Ville", "City")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f))
+                        OutlinedTextField(value = neighborhood, onValueChange = { neighborhood = it }, label = { Text(tr("Quartier", "Neighborhood")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f))
                     }
                     Button(
                         onClick = { step = 2 },
@@ -277,8 +280,8 @@ fun ManagerApplicationScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .border(
-                                        width = if (isChosen) 2.dp else 1.2.dp,
-                                        color = if (isChosen) ParkoBlue else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                        width = if (isChosen) 2.dp else 1.3.dp,
+                                        color = if (isChosen) ParkoBlue else MaterialTheme.colorScheme.outline,
                                         shape = RoundedCornerShape(14.dp)
                                     )
                             ) {
@@ -309,20 +312,22 @@ fun ManagerApplicationScreen(
                         }
                     }
 
-                    OutlinedTextField(value = parkingName, onValueChange = { parkingName = it }, label = { Text(tr("Nom du parking *", "Parking name *")) }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = parkingAddress, onValueChange = { parkingAddress = it }, label = { Text(tr("Adresse *", "Address *")) }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = parkingName, onValueChange = { parkingName = it }, label = { Text(tr("Nom du parking *", "Parking name *")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = parkingAddress, onValueChange = { parkingAddress = it }, label = { Text(tr("Adresse *", "Address *")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedTextField(value = parkingCity, onValueChange = { parkingCity = it }, label = { Text(tr("Ville *", "City *")) }, modifier = Modifier.weight(1f))
-                        OutlinedTextField(value = parkingNeighborhood, onValueChange = { parkingNeighborhood = it }, label = { Text(tr("Quartier *", "Neighborhood *")) }, modifier = Modifier.weight(1f))
+                        OutlinedTextField(value = parkingCity, onValueChange = { parkingCity = it }, label = { Text(tr("Ville *", "City *")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f))
+                        OutlinedTextField(value = parkingNeighborhood, onValueChange = { parkingNeighborhood = it }, label = { Text(tr("Quartier *", "Neighborhood *")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f))
                     }
-                    OutlinedTextField(value = parkingType, onValueChange = { parkingType = it }, label = { Text(tr("Type de parking", "Parking type")) }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = acceptedTypes, onValueChange = { acceptedTypes = it }, label = { Text(tr("Véhicules acceptés", "Accepted vehicles")) }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = parkingType, onValueChange = { parkingType = it }, label = { Text(tr("Type de parking", "Parking type")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = acceptedTypes, onValueChange = { acceptedTypes = it }, label = { Text(tr("Véhicules acceptés", "Accepted vehicles")) }, colors = parkoTextFieldColors(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedTextField(
                             value = dailyVolume,
                             onValueChange = { dailyVolume = it.filter { c -> c.isDigit() } },
                             label = { Text(tr("Véhicules / jour", "Vehicles / day")) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = parkoTextFieldColors(),
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.weight(1f)
                         )
                         OutlinedTextField(
@@ -330,6 +335,8 @@ fun ManagerApplicationScreen(
                             onValueChange = { attendantsCount = it.filter { c -> c.isDigit() } },
                             label = { Text(tr("Nb gardiens", "Attendants")) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = parkoTextFieldColors(),
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -362,7 +369,9 @@ fun ManagerApplicationScreen(
                             FilterChip(
                                 selected = applicantStatus == value,
                                 onClick = { applicantStatus = value },
-                                label = { Text(label, fontWeight = FontWeight.Bold) }
+                                label = { Text(label, fontWeight = FontWeight.Bold) },
+                                colors = parkoFilterChipColors(),
+                                border = parkoFilterChipBorder(applicantStatus == value)
                             )
                         }
                     }
@@ -531,8 +540,8 @@ fun SubscriptionsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .border(
-                            width = if (isSelected) 2.2.dp else 1.2.dp,
-                            color = if (isSelected) ParkoBlue else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                            width = if (isSelected) 2.2.dp else 1.3.dp,
+                            color = if (isSelected) ParkoBlue else MaterialTheme.colorScheme.outline,
                             shape = RoundedCornerShape(20.dp)
                         )
                 ) {
@@ -659,8 +668,8 @@ fun SubscriptionPaymentScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .border(
-                            width = if (isSelected) 2.2.dp else 1.2.dp,
-                            color = if (isSelected) ParkoBlue else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                            width = if (isSelected) 2.2.dp else 1.3.dp,
+                            color = if (isSelected) ParkoBlue else MaterialTheme.colorScheme.outline,
                             shape = RoundedCornerShape(16.dp)
                         )
                 ) {
@@ -687,26 +696,26 @@ fun SubscriptionPaymentScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            tr("Confirmation opérateur requise", "Provider confirmation required"),
+                            tr("Paiement enregistré en attente", "Payment awaiting confirmation"),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = ParkoAmberDark
                         )
-                        Button(
-                            onClick = { onPay(selectedMethod, true) },
-                            colors = ButtonDefaults.buttonColors(containerColor = ParkoEmerald),
-                            modifier = Modifier.fillMaxWidth().height(50.dp)
-                        ) {
-                            Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(22.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(tr("Vérifier & activer", "Verify & activate"), fontWeight = FontWeight.Bold)
-                        }
+                        Text(
+                            tr(
+                                "Par sécurité, un abonnement payant n'est jamais activé côté client. Il deviendra actif dès validation par l'administration PARKO ou le prestataire Mobile Money.",
+                                "For security, paid subscriptions are never activated client-side. Activation happens once verified by PARKO administration or the Mobile Money provider."
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = ParkoCharcoal
+                        )
                     }
                 }
             } else {
                 Button(
                     onClick = {
-                        if (selectedMethod == PaymentMethod.CASH || tier == SubscriptionTier.FREE_TRIAL) {
+                        if (tier == SubscriptionTier.FREE_TRIAL) {
                             onPay(selectedMethod, true)
                         } else {
                             onPay(selectedMethod, false)
@@ -720,7 +729,7 @@ fun SubscriptionPaymentScreen(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         if (tier == SubscriptionTier.FREE_TRIAL) tr("Activer l'essai gratuit", "Activate free trial")
-                        else tr("Payer & activer", "Pay & activate"),
+                        else tr("Enregistrer la demande de paiement", "Submit payment request"),
                         fontWeight = FontWeight.Bold
                     )
                 }

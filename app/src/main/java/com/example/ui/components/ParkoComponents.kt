@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -85,14 +86,14 @@ fun Modifier.parkoAtmosphericBackground(): Modifier {
     val gradientStops = if (isDark) {
         listOf(Color(0xFF070D1C), Color(0xFF0C1832), Color(0xFF081324))
     } else {
-        listOf(Color(0xFFF6F9FF), Color(0xFFECF3FF), Color(0xFFF2F8F9))
+        listOf(Color(0xFFECF2FC), Color(0xFFE3ECFA), Color(0xFFEAF2F6))
     }
-    val topBlueAlpha = if (isDark) 0.34f else 0.16f
-    val midSkyAlpha = if (isDark) 0.18f else 0.10f
-    val bottomEmeraldAlpha = if (isDark) 0.22f else 0.11f
+    val topBlueAlpha = if (isDark) 0.34f else 0.14f
+    val midSkyAlpha = if (isDark) 0.18f else 0.09f
+    val bottomEmeraldAlpha = if (isDark) 0.22f else 0.10f
     val ribbonAlpha = if (isDark) 0.16f else 0.11f
-    val arcAlpha = if (isDark) 0.14f else 0.09f
-    val dotAlpha = if (isDark) 0.12f else 0.08f
+    val arcAlpha = if (isDark) 0.14f else 0.10f
+    val dotAlpha = if (isDark) 0.12f else 0.09f
 
     return this
         .background(Brush.verticalGradient(gradientStops))
@@ -245,10 +246,122 @@ fun Modifier.parkoScannerAtmosphericBackground(): Modifier {
 
 @Composable
 fun Modifier.parkoCardOutline(cornerRadius: Dp = 18.dp): Modifier {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.3f
     return this.border(
-        width = 1.2.dp,
-        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.58f),
+        width = if (isDark) 1.2.dp else 1.3.dp,
+        color = if (isDark) MaterialTheme.colorScheme.outline.copy(alpha = 0.65f) else MaterialTheme.colorScheme.outlineVariant,
         shape = RoundedCornerShape(cornerRadius)
+    )
+}
+
+@Composable
+fun parkoTextFieldColors(): TextFieldColors {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.3f
+    return if (isDark) {
+        OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = ParkoDarkSurfaceVariant,
+            unfocusedContainerColor = ParkoDarkSurface,
+            disabledContainerColor = ParkoDarkSurface.copy(alpha = 0.7f),
+            errorContainerColor = ParkoDarkSurface,
+            focusedBorderColor = ParkoBlueMid,
+            unfocusedBorderColor = Color(0xFF475569),
+            focusedLabelColor = ParkoBlueSoft,
+            unfocusedLabelColor = Color(0xFFCBD5E1),
+            focusedTextColor = Color(0xFFF8FAFC),
+            unfocusedTextColor = Color(0xFFF8FAFC),
+            focusedPlaceholderColor = Color(0xFF94A3B8),
+            unfocusedPlaceholderColor = Color(0xFF94A3B8),
+            focusedLeadingIconColor = ParkoBlueSoft,
+            unfocusedLeadingIconColor = Color(0xFFCBD5E1),
+            focusedTrailingIconColor = ParkoBlueSoft,
+            unfocusedTrailingIconColor = Color(0xFFCBD5E1),
+            cursorColor = ParkoBlueMid
+        )
+    } else {
+        OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            disabledContainerColor = ParkoSurfaceVariant,
+            errorContainerColor = Color.White,
+            focusedBorderColor = ParkoBlue,
+            unfocusedBorderColor = ParkoOutline,
+            disabledBorderColor = ParkoOutlineVariant,
+            focusedLabelColor = ParkoBlueDark,
+            unfocusedLabelColor = ParkoSlate,
+            focusedTextColor = ParkoCharcoal,
+            unfocusedTextColor = ParkoCharcoal,
+            focusedPlaceholderColor = ParkoSlate,
+            unfocusedPlaceholderColor = ParkoSlate,
+            focusedLeadingIconColor = ParkoBlue,
+            unfocusedLeadingIconColor = ParkoSlate,
+            focusedTrailingIconColor = ParkoBlue,
+            unfocusedTrailingIconColor = ParkoSlate,
+            cursorColor = ParkoBlue
+        )
+    }
+}
+
+@Composable
+fun parkoFilterChipColors(): SelectableChipColors {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.3f
+    return if (isDark) {
+        FilterChipDefaults.filterChipColors(
+            containerColor = ParkoDarkSurface,
+            labelColor = Color(0xFFF1F5F9),
+            iconColor = Color(0xFFCBD5E1),
+            selectedContainerColor = ParkoBlueDark,
+            selectedLabelColor = Color.White,
+            selectedLeadingIconColor = Color.White
+        )
+    } else {
+        FilterChipDefaults.filterChipColors(
+            containerColor = Color.White,
+            labelColor = ParkoCharcoal,
+            iconColor = ParkoSlate,
+            selectedContainerColor = ParkoBlueLight,
+            selectedLabelColor = ParkoBlueDark,
+            selectedLeadingIconColor = ParkoBlueDark
+        )
+    }
+}
+
+@Composable
+fun parkoFilterChipBorder(selected: Boolean): BorderStroke {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.3f
+    return BorderStroke(
+        width = if (selected) 1.6.dp else 1.3.dp,
+        color = when {
+            selected -> if (isDark) ParkoBlueMid else ParkoBlue
+            isDark -> Color(0xFF475569)
+            else -> ParkoOutline
+        }
+    )
+}
+
+@Composable
+fun parkoAssistChipColors(): ChipColors {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.3f
+    return if (isDark) {
+        AssistChipDefaults.assistChipColors(
+            containerColor = ParkoDarkSurface,
+            labelColor = Color(0xFFF1F5F9),
+            leadingIconContentColor = ParkoBlueSoft
+        )
+    } else {
+        AssistChipDefaults.assistChipColors(
+            containerColor = Color.White,
+            labelColor = ParkoCharcoal,
+            leadingIconContentColor = ParkoBlue
+        )
+    }
+}
+
+@Composable
+fun parkoAssistChipBorder(): BorderStroke {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.3f
+    return BorderStroke(
+        width = 1.3.dp,
+        color = if (isDark) Color(0xFF475569) else ParkoOutlineVariant
     )
 }
 
@@ -294,7 +407,8 @@ fun ParkoTopBar(
             Surface(
                 onClick = onBack,
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 2.dp,
                 modifier = Modifier
                     .size(46.dp)
                     .minimumInteractiveComponentSize()
@@ -367,6 +481,12 @@ fun SessionStatusBadge(statusRaw: String) {
             containerColor = ParkoEmeraldLight,
             contentColor = ParkoEmeraldDark,
             icon = Icons.Filled.CheckCircle
+        )
+        SessionStatus.EXIT_PENDING -> StatusPill(
+            label = status.localizedLabel(en),
+            containerColor = ParkoAmberLight,
+            contentColor = ParkoAmberDark,
+            icon = Icons.Filled.HourglassTop
         )
         SessionStatus.COMPLETED -> StatusPill(
             label = status.localizedLabel(en),
@@ -547,7 +667,7 @@ fun EmptyStateCard(
                     .size(64.dp)
                     .clip(CircleShape)
                     .background(ParkoBlueLight)
-                    .border(1.5.dp, ParkoBlue.copy(alpha = 0.25f), CircleShape),
+                    .border(1.5.dp, ParkoBlue.copy(alpha = 0.42f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(icon, contentDescription = null, tint = ParkoBlue, modifier = Modifier.size(34.dp))
@@ -606,8 +726,8 @@ fun ParkoMenuRow(
             modifier = Modifier
                 .size(44.dp)
                 .clip(RoundedCornerShape(13.dp))
-                .background(iconTint.copy(alpha = 0.18f))
-                .border(1.dp, iconTint.copy(alpha = 0.35f), RoundedCornerShape(13.dp)),
+                .background(iconTint.copy(alpha = 0.16f))
+                .border(1.2.dp, iconTint.copy(alpha = 0.48f), RoundedCornerShape(13.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))

@@ -106,7 +106,45 @@ data class ParkingSessionEntity(
     val paymentStatus: String,
     val exitWithoutQr: Boolean = false,
     val exitAuditNote: String? = null,
-    val physicalCheckConfirmed: Boolean = false
+    val physicalCheckConfirmed: Boolean = false,
+    // Security: secret withdrawal code (never stored in plaintext)
+    val withdrawalCodeSalt: String = "",
+    val withdrawalCodeHash: String = "",
+    val encryptedWithdrawalCode: String? = null,
+    val withdrawalCodeExpiresAt: Long = 0L,
+    val withdrawalAttempts: Int = 0,
+    val withdrawalLockedUntil: Long = 0L,
+    val withdrawalBlockedForManager: Boolean = false,
+    val withdrawalVerifiedAt: Long? = null,
+    val withdrawalVerifiedByUserId: String? = null,
+    // Security: EXIT_PENDING exclusive checkout lock
+    val exitPendingByUserId: String? = null,
+    val exitPendingByName: String? = null,
+    val exitPendingAt: Long? = null,
+    val exitPendingExpiresAt: Long? = null,
+    val physicalMismatchReported: Boolean = false
+)
+
+@Entity(tableName = "exceptional_recoveries")
+data class ExceptionalRecoveryEntity(
+    @PrimaryKey val id: String,
+    val sessionId: String,
+    val sessionRef: String,
+    val parkingId: String,
+    val parkingName: String,
+    val requestedByUserId: String,
+    val requestedByName: String,
+    val reasonType: String,
+    val claimantName: String,
+    val declaredPlateNumber: String,
+    val description: String,
+    val physicalCheckConfirmed: Boolean,
+    val status: String,
+    val reviewedByUserId: String? = null,
+    val reviewedByName: String? = null,
+    val decisionReason: String? = null,
+    val createdAt: Long,
+    val reviewedAt: Long? = null
 )
 
 @Entity(tableName = "payment_records")
@@ -192,5 +230,9 @@ data class AuditLogEntity(
     val targetType: String,
     val targetId: String,
     val details: String,
+    val parkingId: String? = null,
+    val sessionId: String? = null,
+    val result: String = "SUCCESS",
+    val reason: String? = null,
     val createdAt: Long
 )

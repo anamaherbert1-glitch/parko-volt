@@ -30,9 +30,16 @@ enum class VehicleType(val label: String, val defaultFeeFcfa: Int) {
 
 enum class SessionStatus(val label: String) {
     ACTIVE("Valide"),
+    EXIT_PENDING("Sortie en cours"),
     COMPLETED("Terminée"),
     EXPIRED("Expirée"),
     NEEDS_VERIFICATION("Vérification requise")
+}
+
+enum class RecoveryStatus(val label: String) {
+    PENDING("En attente"),
+    APPROVED("Approuvée"),
+    REJECTED("Refusée")
 }
 
 enum class PaymentMethod(val label: String) {

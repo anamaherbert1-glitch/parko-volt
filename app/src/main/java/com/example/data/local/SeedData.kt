@@ -10,6 +10,7 @@ import com.example.data.model.SessionStatus
 import com.example.data.model.SubscriptionTier
 import com.example.data.model.UserRole
 import com.example.data.model.VehicleType
+import com.example.util.ParkoSecurityConfig
 import com.example.util.SecurityUtils
 
 object SeedData {
@@ -19,7 +20,14 @@ object SeedData {
     const val PARKING_GRAND_MARCHE_ID = "pkg_grand_marche"
     const val PARKING_TOKOIN_ID = "pkg_tokoin"
 
+    // Demo-only withdrawal secret codes (stored hashed + AES-GCM encrypted for active owner)
+    const val DEMO_SECRET_SES_1 = "482910"
+    const val DEMO_SECRET_SES_2 = "739104"
+    const val DEMO_SECRET_SES_3 = "615209"
+    const val DEMO_SECRET_SES_4 = "842751"
+
     suspend fun seedIfEmpty(dao: ParkoDao) {
+        if (!ParkoSecurityConfig.isDemoModeEnabled) return
         if (dao.getUserCount() > 0) return
 
         val now = System.currentTimeMillis()
@@ -238,6 +246,7 @@ object SeedData {
         dao.upsertVehicle(yamaha)
 
         // 5. Seed Parking Sessions (2 active for Amadou + 2 active for others + historical completed)
+        val s1Salt = SecurityUtils.generateSalt()
         val s1 = ParkingSessionEntity(
             id = "ses_1",
             referenceCode = "PK-8492GM",
@@ -259,8 +268,13 @@ object SeedData {
             status = SessionStatus.ACTIVE.name,
             feeFcfa = 500,
             paymentMethod = PaymentMethod.MIXX_BY_YAS.name,
-            paymentStatus = PaymentStatus.CONFIRMED.name
+            paymentStatus = PaymentStatus.CONFIRMED.name,
+            withdrawalCodeSalt = s1Salt,
+            withdrawalCodeHash = SecurityUtils.hashSecret(DEMO_SECRET_SES_1, s1Salt),
+            encryptedWithdrawalCode = SecurityUtils.encryptSensitiveText(DEMO_SECRET_SES_1),
+            withdrawalCodeExpiresAt = now + ParkoSecurityConfig.withdrawalCodeValidityMs
         )
+        val s2Salt = SecurityUtils.generateSalt()
         val s2 = ParkingSessionEntity(
             id = "ses_2",
             referenceCode = "PK-9104TK",
@@ -282,8 +296,13 @@ object SeedData {
             status = SessionStatus.ACTIVE.name,
             feeFcfa = 200,
             paymentMethod = PaymentMethod.CASH.name,
-            paymentStatus = PaymentStatus.PENDING.name
+            paymentStatus = PaymentStatus.PENDING.name,
+            withdrawalCodeSalt = s2Salt,
+            withdrawalCodeHash = SecurityUtils.hashSecret(DEMO_SECRET_SES_2, s2Salt),
+            encryptedWithdrawalCode = SecurityUtils.encryptSensitiveText(DEMO_SECRET_SES_2),
+            withdrawalCodeExpiresAt = now + ParkoSecurityConfig.withdrawalCodeValidityMs
         )
+        val s3Salt = SecurityUtils.generateSalt()
         val s3 = ParkingSessionEntity(
             id = "ses_3",
             referenceCode = "PK-4420GM",
@@ -305,8 +324,13 @@ object SeedData {
             status = SessionStatus.ACTIVE.name,
             feeFcfa = 200,
             paymentMethod = PaymentMethod.FLOOZ.name,
-            paymentStatus = PaymentStatus.CONFIRMED.name
+            paymentStatus = PaymentStatus.CONFIRMED.name,
+            withdrawalCodeSalt = s3Salt,
+            withdrawalCodeHash = SecurityUtils.hashSecret(DEMO_SECRET_SES_3, s3Salt),
+            encryptedWithdrawalCode = SecurityUtils.encryptSensitiveText(DEMO_SECRET_SES_3),
+            withdrawalCodeExpiresAt = now + ParkoSecurityConfig.withdrawalCodeValidityMs
         )
+        val s4Salt = SecurityUtils.generateSalt()
         val s4 = ParkingSessionEntity(
             id = "ses_4",
             referenceCode = "PK-5518GM",
@@ -328,7 +352,11 @@ object SeedData {
             status = SessionStatus.ACTIVE.name,
             feeFcfa = 300,
             paymentMethod = PaymentMethod.CASH.name,
-            paymentStatus = PaymentStatus.PENDING.name
+            paymentStatus = PaymentStatus.PENDING.name,
+            withdrawalCodeSalt = s4Salt,
+            withdrawalCodeHash = SecurityUtils.hashSecret(DEMO_SECRET_SES_4, s4Salt),
+            encryptedWithdrawalCode = SecurityUtils.encryptSensitiveText(DEMO_SECRET_SES_4),
+            withdrawalCodeExpiresAt = now + ParkoSecurityConfig.withdrawalCodeValidityMs
         )
         val s5 = ParkingSessionEntity(
             id = "ses_5",

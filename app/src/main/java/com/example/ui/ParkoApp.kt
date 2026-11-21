@@ -8,6 +8,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,6 +25,10 @@ import com.example.ui.i18n.AppLanguage
 import com.example.ui.i18n.LocalAppLanguage
 import com.example.ui.i18n.tr
 import com.example.ui.screens.*
+import com.example.ui.theme.ParkoBlue
+import com.example.ui.theme.ParkoBlueDark
+import com.example.ui.theme.ParkoBlueLight
+import com.example.ui.theme.ParkoSlate
 import com.example.ui.viewmodel.ParkoViewModel
 
 private enum class PersonalTab { HOME, TICKETS, HISTORY, PROFILE }
@@ -72,6 +78,9 @@ fun ParkoApp(viewModel: ParkoViewModel) {
                         AppSpace.PERSONAL -> PersonalSpaceShell(viewModel = viewModel, user = user)
                         AppSpace.PRO -> ProSpaceShell(viewModel = viewModel, user = user)
                         AppSpace.ADMIN -> {
+                            LaunchedEffect(Unit) {
+                                viewModel.touchProSession()
+                            }
                             val users by viewModel.allUsers.collectAsStateWithLifecycle()
                             val parkings by viewModel.allParkings.collectAsStateWithLifecycle()
                             val attendants by viewModel.allAttendants.collectAsStateWithLifecycle()
@@ -139,21 +148,32 @@ private fun PersonalSpaceShell(
 
     val unreadCount = notifications.count { !it.isRead }
     val activeTicketsCount = sessions.count {
-        it.status == SessionStatus.ACTIVE.name || it.status == SessionStatus.NEEDS_VERIFICATION.name
+        it.status == SessionStatus.ACTIVE.name ||
+            it.status == SessionStatus.EXIT_PENDING.name ||
+            it.status == SessionStatus.NEEDS_VERIFICATION.name
     }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (overlay == PersonalOverlay.NONE) {
+                val isDark = MaterialTheme.colorScheme.background.luminance() < 0.3f
+                val navItemColors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = if (isDark) Color.White else ParkoBlueDark,
+                    selectedTextColor = if (isDark) Color.White else ParkoBlueDark,
+                    indicatorColor = if (isDark) ParkoBlue.copy(alpha = 0.34f) else ParkoBlueLight,
+                    unselectedIconColor = if (isDark) Color(0xFF94A3B8) else ParkoSlate,
+                    unselectedTextColor = if (isDark) Color(0xFF94A3B8) else ParkoSlate
+                )
                 Column {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                         NavigationBarItem(
                             selected = currentTab == PersonalTab.HOME,
                             onClick = { currentTab = PersonalTab.HOME },
                             icon = { Icon(Icons.Filled.Home, contentDescription = tr("Accueil", "Home"), modifier = Modifier.size(26.dp)) },
                             label = { Text(tr("Accueil", "Home"), fontWeight = FontWeight.Bold) },
+                            colors = navItemColors,
                             modifier = Modifier.testTag("nav_personal_home")
                         )
                         NavigationBarItem(
@@ -161,6 +181,7 @@ private fun PersonalSpaceShell(
                             onClick = { currentTab = PersonalTab.TICKETS },
                             icon = { Icon(Icons.Filled.QrCode2, contentDescription = tr("Tickets", "Tickets"), modifier = Modifier.size(26.dp)) },
                             label = { Text(tr("Tickets", "Tickets"), fontWeight = FontWeight.Bold) },
+                            colors = navItemColors,
                             modifier = Modifier.testTag("nav_personal_tickets")
                         )
                         NavigationBarItem(
@@ -168,6 +189,7 @@ private fun PersonalSpaceShell(
                             onClick = { currentTab = PersonalTab.HISTORY },
                             icon = { Icon(Icons.Filled.History, contentDescription = tr("Historique", "History"), modifier = Modifier.size(26.dp)) },
                             label = { Text(tr("Historique", "History"), fontWeight = FontWeight.Bold) },
+                            colors = navItemColors,
                             modifier = Modifier.testTag("nav_personal_history")
                         )
                         NavigationBarItem(
@@ -175,6 +197,7 @@ private fun PersonalSpaceShell(
                             onClick = { currentTab = PersonalTab.PROFILE },
                             icon = { Icon(Icons.Filled.Person, contentDescription = tr("Profil", "Profile"), modifier = Modifier.size(26.dp)) },
                             label = { Text(tr("Profil", "Profile"), fontWeight = FontWeight.Bold) },
+                            colors = navItemColors,
                             modifier = Modifier.testTag("nav_personal_profile")
                         )
                     }
@@ -283,8 +306,8 @@ private fun PersonalSpaceShell(
                             selectedTicket = s
                             overlay = PersonalOverlay.TICKET_DETAIL
                         },
-                        onClaimTicket = { code, onDone ->
-                            viewModel.claimTicketByCode(code) { claimed ->
+                        onClaimTicket = { code, plate, onDone ->
+                            viewModel.claimTicketByCode(code, plate) { claimed ->
                                 onDone()
                                 selectedTicket = claimed
                                 overlay = PersonalOverlay.TICKET_DETAIL
@@ -328,19 +351,42 @@ private fun ProSpaceShell(
 ) {
     val en = LocalAppLanguage.current == AppLanguage.EN
     val activeParking by viewModel.activeParking.collectAsStateWithLifecycle()
+    val canAccessPro by viewModel.canAccessProSpace.collectAsStateWithLifecycle()
     val sessions by viewModel.proSessions.collectAsStateWithLifecycle()
     val payments by viewModel.proPayments.collectAsStateWithLifecycle()
     val attendants by viewModel.proAttendants.collectAsStateWithLifecycle()
     val incidents by viewModel.proIncidents.collectAsStateWithLifecycle()
+    val recoveries by viewModel.proRecoveries.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+    val lastCreatedPlainCode by viewModel.lastCreatedPlainCode.collectAsStateWithLifecycle()
 
     var currentTab by remember { mutableStateOf(ProTab.DASHBOARD) }
     var overlay by remember { mutableStateOf(ProOverlay.NONE) }
     var focusedSession by remember { mutableStateOf<ParkingSessionEntity?>(null) }
     var openedWithoutQr by remember { mutableStateOf(false) }
+    var ticketFromRegister by remember { mutableStateOf(false) }
     var selectedTier by remember { mutableStateOf(SubscriptionTier.STANDARD) }
+
+    LaunchedEffect(Unit) {
+        viewModel.touchProSession()
+        viewModel.refreshConnectivity()
+    }
+
+    LaunchedEffect(user.isSuspended, activeParking, canAccessPro) {
+        if (user.isSuspended || (activeParking != null && !canAccessPro)) {
+            viewModel.switchSpace(AppSpace.PERSONAL)
+        }
+    }
 
     BackHandler(enabled = overlay != ProOverlay.NONE || currentTab != ProTab.DASHBOARD) {
         if (overlay != ProOverlay.NONE) {
+            if (overlay == ProOverlay.VERIFY_SESSION) {
+                focusedSession?.let { viewModel.cancelExitVerification(it) }
+            }
+            if (overlay == ProOverlay.TICKET_GENERATED) {
+                ticketFromRegister = false
+                viewModel.clearCreatedSecretCode()
+            }
             overlay = when (overlay) {
                 ProOverlay.SUB_PAYMENT -> ProOverlay.SUBSCRIPTIONS
                 else -> ProOverlay.NONE
@@ -356,14 +402,23 @@ private fun ProSpaceShell(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (overlay == ProOverlay.NONE) {
+                val isDark = MaterialTheme.colorScheme.background.luminance() < 0.3f
+                val navItemColors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = if (isDark) Color.White else ParkoBlueDark,
+                    selectedTextColor = if (isDark) Color.White else ParkoBlueDark,
+                    indicatorColor = if (isDark) ParkoBlue.copy(alpha = 0.34f) else ParkoBlueLight,
+                    unselectedIconColor = if (isDark) Color(0xFF94A3B8) else ParkoSlate,
+                    unselectedTextColor = if (isDark) Color(0xFF94A3B8) else ParkoSlate
+                )
                 Column {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                         NavigationBarItem(
                             selected = currentTab == ProTab.DASHBOARD,
                             onClick = { currentTab = ProTab.DASHBOARD },
                             icon = { Icon(Icons.Filled.Home, contentDescription = tr("Accueil Pro", "Pro Home"), modifier = Modifier.size(26.dp)) },
                             label = { Text(tr("Accueil", "Home"), fontWeight = FontWeight.Bold) },
+                            colors = navItemColors,
                             modifier = Modifier.testTag("nav_pro_home")
                         )
                         NavigationBarItem(
@@ -371,6 +426,7 @@ private fun ProSpaceShell(
                             onClick = { currentTab = ProTab.REGISTER },
                             icon = { Icon(Icons.Filled.AddCircle, contentDescription = tr("Enregistrer", "Register"), modifier = Modifier.size(26.dp)) },
                             label = { Text(tr("Enregistrer", "Register"), fontWeight = FontWeight.Bold) },
+                            colors = navItemColors,
                             modifier = Modifier.testTag("nav_pro_register")
                         )
                         NavigationBarItem(
@@ -378,6 +434,7 @@ private fun ProSpaceShell(
                             onClick = { currentTab = ProTab.SCANNER },
                             icon = { Icon(Icons.Filled.QrCodeScanner, contentDescription = tr("Scanner", "Scan"), modifier = Modifier.size(26.dp)) },
                             label = { Text(tr("Scanner", "Scan"), fontWeight = FontWeight.Bold) },
+                            colors = navItemColors,
                             modifier = Modifier.testTag("nav_pro_scanner")
                         )
                         NavigationBarItem(
@@ -385,6 +442,7 @@ private fun ProSpaceShell(
                             onClick = { currentTab = ProTab.HISTORY },
                             icon = { Icon(Icons.Filled.History, contentDescription = tr("Historique", "History"), modifier = Modifier.size(26.dp)) },
                             label = { Text(tr("Historique", "History"), fontWeight = FontWeight.Bold) },
+                            colors = navItemColors,
                             modifier = Modifier.testTag("nav_pro_history")
                         )
                     }
@@ -400,7 +458,10 @@ private fun ProSpaceShell(
                         TicketDetailScreen(
                             session = s,
                             isProSender = true,
+                            generatedSecretCode = if (ticketFromRegister) lastCreatedPlainCode else null,
                             onBack = {
+                                ticketFromRegister = false
+                                viewModel.clearCreatedSecretCode()
                                 overlay = ProOverlay.NONE
                                 currentTab = ProTab.DASHBOARD
                             },
@@ -416,18 +477,51 @@ private fun ProSpaceShell(
                 ProOverlay.VERIFY_SESSION -> {
                     val s = focusedSession?.let { fs -> sessions.firstOrNull { it.id == fs.id } ?: fs }
                     if (s != null) {
+                        val latestRecovery = recoveries.filter { it.sessionId == s.id }.maxByOrNull { it.createdAt }
                         VehicleVerificationScreen(
                             session = s,
+                            currentUser = user,
+                            isOnline = isOnline,
+                            latestRecovery = latestRecovery,
                             openedWithoutQr = openedWithoutQr,
-                            onBack = { overlay = ProOverlay.NONE },
-                            onOpenQr = { overlay = ProOverlay.TICKET_GENERATED },
+                            onBack = {
+                                viewModel.cancelExitVerification(s)
+                                overlay = ProOverlay.NONE
+                            },
+                            onOpenQr = {
+                                ticketFromRegister = false
+                                viewModel.clearCreatedSecretCode()
+                                overlay = ProOverlay.TICKET_GENERATED
+                            },
                             onVerifyMobileMoney = { method ->
                                 viewModel.verifySessionMobileMoney(s, method) { updated ->
                                     focusedSession = updated
                                 }
                             },
-                            onAuthorizeExit = { physical, withoutQrFlag, reason ->
-                                viewModel.authorizeExit(s, physical, withoutQrFlag, reason) {
+                            onVerifyWithdrawalCode = { code ->
+                                viewModel.verifyWithdrawalCode(s, code) { updated ->
+                                    focusedSession = updated
+                                }
+                            },
+                            onUnlockBlockedWithdrawal = { reason ->
+                                viewModel.unlockBlockedWithdrawal(s, reason) { updated ->
+                                    focusedSession = updated
+                                }
+                            },
+                            onReportPhysicalMismatch = { desc ->
+                                viewModel.reportPhysicalMismatch(s, desc) { updated ->
+                                    focusedSession = updated
+                                }
+                            },
+                            onSubmitExceptionalRecovery = { rType, cName, plate, desc, phys ->
+                                viewModel.submitExceptionalRecovery(s, rType, cName, plate, desc, phys) {}
+                            },
+                            onReviewRecovery = { rec, approve, reason ->
+                                viewModel.reviewExceptionalRecovery(rec, approve, reason)
+                            },
+                            onAuthorizeExit = { physical, reason ->
+                                viewModel.authorizeExit(s, physical, reason) {
+                                    viewModel.clearCreatedSecretCode()
                                     overlay = ProOverlay.NONE
                                     currentTab = ProTab.DASHBOARD
                                 }
@@ -491,16 +585,27 @@ private fun ProSpaceShell(
                         payments = payments,
                         attendants = attendants,
                         incidents = incidents,
+                        recoveries = recoveries,
+                        isOnline = isOnline,
                         onRegisterVehicle = { currentTab = ProTab.REGISTER },
                         onOpenScanner = { currentTab = ProTab.SCANNER },
                         onOpenReports = { overlay = ProOverlay.REPORTS },
                         onOpenAttendants = { overlay = ProOverlay.ATTENDANTS },
                         onOpenIncidents = { overlay = ProOverlay.INCIDENTS },
                         onOpenSubscriptions = { overlay = ProOverlay.SUBSCRIPTIONS },
+                        onReviewRecovery = { rec, approve, reason ->
+                            viewModel.reviewExceptionalRecovery(rec, approve, reason)
+                        },
                         onSelectSession = { s ->
-                            focusedSession = s
-                            openedWithoutQr = false
-                            overlay = ProOverlay.VERIFY_SESSION
+                            viewModel.beginExitVerification(
+                                session = s,
+                                onReady = { locked ->
+                                    focusedSession = locked
+                                    openedWithoutQr = false
+                                    overlay = ProOverlay.VERIFY_SESSION
+                                },
+                                onBlocked = {}
+                            )
                         },
                         onSwitchToPersonal = { viewModel.switchSpace(AppSpace.PERSONAL) }
                     )
@@ -511,6 +616,7 @@ private fun ProSpaceShell(
                             viewModel.registerVehicleEntry(
                                 type, plate, brandModel, color, ownerName, ownerPhone, fee, method, photoUri
                             ) { createdSession ->
+                                ticketFromRegister = true
                                 focusedSession = createdSession
                                 overlay = ProOverlay.TICKET_GENERATED
                             }
@@ -523,9 +629,15 @@ private fun ProSpaceShell(
                             viewModel.scanSessionByQuery(
                                 query = query,
                                 onFound = { found ->
-                                    focusedSession = found
-                                    openedWithoutQr = isWithoutQr
-                                    overlay = ProOverlay.VERIFY_SESSION
+                                    viewModel.beginExitVerification(
+                                        session = found,
+                                        onReady = { locked ->
+                                            focusedSession = locked
+                                            openedWithoutQr = isWithoutQr
+                                            overlay = ProOverlay.VERIFY_SESSION
+                                        },
+                                        onBlocked = {}
+                                    )
                                 },
                                 onNotFound = {
                                     viewModel.showMessage(
@@ -539,9 +651,15 @@ private fun ProSpaceShell(
                     ProTab.HISTORY -> ProHistoryScreen(
                         sessions = sessions,
                         onSelectSession = { s ->
-                            focusedSession = s
-                            openedWithoutQr = false
-                            overlay = ProOverlay.VERIFY_SESSION
+                            viewModel.beginExitVerification(
+                                session = s,
+                                onReady = { locked ->
+                                    focusedSession = locked
+                                    openedWithoutQr = false
+                                    overlay = ProOverlay.VERIFY_SESSION
+                                },
+                                onBlocked = {}
+                            )
                         }
                     )
                 }
