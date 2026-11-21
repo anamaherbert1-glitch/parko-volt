@@ -1,0 +1,935 @@
+ 
+# PARKO — DOCUMENT FONCTIONNEL COMPLET
+
+## 1. Présentation générale
+
+PARKO est une application mobile de gestion et de sécurisation des parkings. Elle a pour objectif de moderniser le fonctionnement des parkings traditionnels, notamment les parkings de motos et de voitures, en permettant aux propriétaires de véhicules, aux gardiens et aux gestionnaires de travailler à partir d'une même plateforme.
+
+Dans le système traditionnel, un client arrive dans un parking, confie son véhicule à un gardien, puis revient le récupérer après un certain temps. Le gardien doit reconnaître le véhicule, retrouver son propriétaire et vérifier que les conditions de sortie sont respectées.
+
+PARKO digitalise cette opération.
+
+Chaque stationnement est enregistré dans le système. Une session de stationnement est créée et un ticket numérique contenant un QR code unique est généré. Ce ticket permet de retrouver le dossier du véhicule et de vérifier son autorisation de sortie.
+
+### La promesse de PARKO
+
+- Chaque véhicule enregistré.
+- Chaque stationnement suivi.
+- Chaque entrée et chaque sortie contrôlées.
+- Chaque opération attribuée à un utilisateur autorisé.
+- Chaque paiement enregistré et traçable.
+- Chaque parking géré depuis un espace professionnel.
+
+PARKO doit rester simple à utiliser, même pour les personnes qui ne sont pas habituées aux applications numériques.
+
+## 2. Une seule application avec deux espaces
+
+PARKO est une application unique qui contient deux environnements différents.
+
+### A. L'espace personnel
+
+C'est l'espace accessible par défaut à toute personne qui installe l'application.
+
+Un utilisateur ordinaire peut :
+- créer son compte ;
+- se connecter ;
+- enregistrer ses informations personnelles ;
+- ajouter et consulter ses véhicules ;
+- consulter ses tickets QR ;
+- retrouver ses stationnements ;
+- consulter ses paiements et reçus ;
+- recevoir des notifications ;
+- modifier son profil et ses paramètres.
+
+L'utilisateur n'a pas besoin d'être gestionnaire d'un parking pour utiliser cette partie.
+
+### B. L'espace professionnel
+
+Cet espace est réservé aux personnes qui exploitent ou gèrent réellement un parking et dont la candidature a été validée par PARKO.
+
+Il permet de :
+- gérer un ou plusieurs parkings selon les autorisations accordées ;
+- enregistrer les véhicules ;
+- générer les tickets QR ;
+- scanner les tickets ;
+- contrôler les entrées et les sorties ;
+- gérer les gardiens ;
+- suivre les recettes ;
+- consulter les statistiques ;
+- gérer l'abonnement ;
+- consulter les performances des gardiens.
+
+Les deux espaces sont accessibles depuis le même compte. Lorsqu'un utilisateur possède les autorisations professionnelles nécessaires, il peut basculer entre son espace personnel et son espace professionnel sans se déconnecter.
+
+## 3. Création d'un compte et inscription
+
+Lorsqu'une personne ouvre PARKO pour la première fois, elle arrive sur l'écran d'accueil ou de bienvenue.
+
+Elle peut :
+- créer un compte ;
+- se connecter à un compte existant ;
+- consulter les informations générales de l'application.
+
+L'inscription demande les informations nécessaires à la création d'un compte :
+- nom ;
+- prénom ;
+- numéro de téléphone ;
+- adresse e-mail si nécessaire ;
+- mot de passe ;
+- confirmation du mot de passe.
+
+Le numéro de téléphone doit être adapté aux formats utilisés au Togo, notamment les indicatifs internationaux.
+
+Le système doit prévoir la vérification du compte, la récupération du mot de passe et la gestion des sessions de connexion.
+
+Après son inscription, l'utilisateur accède directement à son espace personnel.
+
+## 4. Fonctionnement de l'espace personnel
+
+L'accueil personnel doit présenter les informations importantes sans surcharger l'écran.
+
+Il peut contenir :
+- un message de bienvenue ;
+- un accès aux véhicules ;
+- un accès aux tickets QR ;
+- les derniers stationnements ;
+- les notifications ;
+- un accès au profil.
+
+### A. Mes véhicules
+
+L'utilisateur peut ajouter les véhicules qui lui appartiennent ou qu'il utilise régulièrement.
+
+Pour chaque véhicule, les informations peuvent comprendre :
+- type de véhicule ;
+- numéro d'immatriculation ;
+- marque ;
+- modèle ;
+- couleur ;
+- photo du véhicule.
+
+Types de véhicules prévus :
+- moto ;
+- voiture ;
+- tricycle ;
+- camion ;
+- autre.
+
+L'utilisateur peut consulter et modifier les informations personnelles de ses véhicules. Toutefois, il ne peut pas modifier un enregistrement de stationnement réalisé par un gardien.
+
+### B. Mes tickets QR
+
+Cette rubrique contient les tickets de stationnement associés à l'utilisateur.
+
+Lorsqu'un gardien enregistre un véhicule et renseigne correctement le numéro de téléphone du propriétaire, le système peut associer la session au compte correspondant.
+
+Le propriétaire peut alors consulter le ticket QR depuis son téléphone.
+
+Chaque ticket affiche notamment :
+- une référence de stationnement ;
+- le véhicule concerné ;
+- le parking ;
+- la date et l'heure d'entrée ;
+- l'état du stationnement ;
+- le QR code.
+
+Le ticket peut être actif, terminé, expiré ou signalé comme nécessitant une vérification.
+
+### C. Historique
+
+L'utilisateur retrouve les anciens stationnements :
+- date ;
+- parking ;
+- véhicule ;
+- heure d'entrée ;
+- heure de sortie ;
+- montant payé ;
+- moyen de paiement ;
+- état du stationnement.
+
+Les anciennes sessions restent consultables même si le parking change d'abonnement.
+
+### D. Paiements et reçus
+
+L'utilisateur peut consulter les paiements associés à ses stationnements et les reçus disponibles.
+
+Il doit pouvoir distinguer :
+- paiement en espèces ;
+- paiement Mobile Money ;
+- paiement en attente ;
+- paiement confirmé ;
+- paiement échoué ;
+- paiement annulé ou remboursé.
+
+### E. Profil et paramètres
+
+Le profil contient les informations personnelles de l'utilisateur, sa photo, son numéro de téléphone et les autres informations de compte.
+
+Les paramètres permettent notamment de gérer :
+- langue ;
+- notifications ;
+- sécurité du compte ;
+- confidentialité ;
+- déconnexion.
+
+L'accès à la candidature professionnelle est placé discrètement dans les paramètres.
+
+## 5. Devenir gestionnaire de parking
+
+La possibilité de devenir gestionnaire ne doit pas être affichée comme une fonction principale sur l'accueil de tous les utilisateurs.
+
+Elle se trouve dans un emplacement secondaire :
+
+Paramètres → Services professionnels → Devenir gestionnaire de parking.
+
+Ce parcours transforme un utilisateur ordinaire en candidat à l'exploitation professionnelle de PARKO.
+
+### Étape 1 : Informations personnelles
+
+Le candidat renseigne :
+- nom et prénom ;
+- date de naissance ;
+- numéro de téléphone ;
+- adresse e-mail éventuelle ;
+- ville ;
+- quartier ;
+- photo de profil.
+
+### Étape 2 : Informations sur le parking
+
+Le candidat indique :
+- nom du parking ;
+- adresse ou emplacement ;
+- ville et quartier ;
+- type de parking ;
+- types de véhicules acceptés ;
+- nombre moyen de véhicules reçus par jour ou par semaine ;
+- nombre de gardiens ;
+- statut du candidat : propriétaire, responsable ou gestionnaire ;
+- justificatif éventuel du droit de gérer ce parking.
+
+### Étape 3 : Vérification de l'identité
+
+Le système peut demander :
+- une pièce d'identité ;
+- une photo du recto ;
+- une photo du verso ;
+- un selfie de vérification ;
+- un justificatif complémentaire si nécessaire.
+
+Les documents d'identité et les selfies doivent être conservés dans un espace privé et sécurisé. Ils ne doivent pas être visibles par les autres utilisateurs ou les gardiens.
+
+Le candidat doit être informé de l'utilisation de ses documents et donner son consentement.
+
+### Étape 4 : Soumission de la demande
+
+Une fois les informations renseignées, la demande est envoyée à l'administration PARKO.
+
+Elle peut prendre plusieurs états :
+- en attente ;
+- en cours d'examen ;
+- informations complémentaires requises ;
+- approuvée ;
+- rejetée.
+
+L'administration doit pouvoir vérifier l'identité du candidat et son autorisation réelle de gérer le parking.
+
+Un objectif de traitement d'environ 30 minutes peut être visé lorsque le service de vérification est disponible, sans promettre une validation automatique dans ce délai.
+
+### Étape 5 : Choix de l'abonnement
+
+Après approbation, le candidat peut choisir son offre en fonction de son volume d'activité et de son nombre de gardiens.
+
+Il peut consulter :
+- le prix ;
+- le nombre maximal de gardiens ;
+- les quotas ;
+- les fonctionnalités ;
+- la durée ;
+- la date d'expiration.
+
+### Étape 6 : Activation professionnelle
+
+L'espace professionnel devient accessible uniquement lorsque :
+1. la candidature est approuvée ;
+2. l'abonnement est payé et confirmé, ou l'essai gratuit est activé.
+
+Tant que ces conditions ne sont pas réunies, l'utilisateur conserve son espace personnel.
+
+## 6. Les abonnements PARKO
+
+Les abonnements sont facturés par parking ou exploitant, et non par gardien individuellement.
+
+### Offre gratuite — Essai
+
+Prix : 0 FCFA.
+
+Limites :
+- 50 nouveaux stationnements par mois ;
+- 1 gardien ;
+- génération de QR codes ;
+- scan des QR codes ;
+- validation des sorties ;
+- historique simple.
+
+Cette offre permet à un gestionnaire de découvrir le fonctionnement de PARKO.
+
+### Offre Essentiel — 500 FCFA par mois
+
+Limites :
+- 15 nouveaux stationnements par jour ;
+- 1 gardien ;
+- motos et voitures ;
+- enregistrement des véhicules ;
+- génération des tickets QR ;
+- scan des tickets ;
+- validation des entrées et sorties ;
+- historique simple.
+
+### Offre Standard — 3 000 FCFA par mois
+
+Limites :
+- 50 nouveaux stationnements par jour ;
+- jusqu'à 3 gardiens.
+
+Fonctionnalités :
+- toutes les fonctions Essentiel ;
+- photos des véhicules ;
+- historique complet ;
+- rapports de recettes journaliers ;
+- statistiques mensuelles ;
+- gestion des paiements.
+
+### Offre Pro illimité — 5 000 FCFA par mois
+
+Limites :
+- nouveaux stationnements sans plafond commercial artificiel ;
+- jusqu'à 7 gardiens interconnectés.
+
+Fonctionnalités :
+- toutes les fonctions Standard ;
+- QR codes et scans sans quota commercial ;
+- photos des véhicules ;
+- historique complet ;
+- rapports journaliers, hebdomadaires et mensuels ;
+- export des données ;
+- suivi des performances des gardiens ;
+- classement et badges ;
+- gestion des incidents ;
+- statistiques avancées ;
+- plusieurs superviseurs ;
+- tableau de bord avancé.
+
+L'offre Pro doit être particulièrement intéressante pour les parkings ayant un volume d'activité élevé.
+
+### Règles de consommation des quotas
+
+Le quota correspond au nombre de nouveaux stationnements créés, et non au nombre de véhicules possédés par un utilisateur.
+
+Exemple : une moto entre dans un parking le matin, sort le soir, puis revient le lendemain. Il s'agit de deux sessions distinctes.
+
+En revanche, scanner plusieurs fois un ticket encore actif pour retrouver son dossier ne doit pas consommer plusieurs quotas.
+
+Le gestionnaire doit voir :
+- le quota total ;
+- le nombre de sessions consommées ;
+- le nombre restant ;
+- la date de renouvellement ;
+- les avertissements avant saturation.
+
+Lorsque le quota est atteint, les nouvelles entrées sont bloquées jusqu'au renouvellement ou au changement d'offre.
+
+**Règle de sécurité essentielle :** un véhicule déjà présent dans le parking doit toujours pouvoir sortir, même si l'abonnement a expiré ou si le quota est atteint.
+
+L'expiration d'un abonnement ne doit jamais supprimer l'historique ni les données du parking.
+
+## 7. Fonctionnement de l'espace professionnel
+
+L'espace professionnel est l'outil de travail quotidien du gestionnaire et de ses gardiens.
+
+### A. Tableau de bord
+
+Le tableau de bord affiche :
+- nombre d'entrées du jour ;
+- nombre de véhicules actuellement présents ;
+- nombre de sorties terminées ;
+- recettes du jour ;
+- recettes en espèces ;
+- recettes Mobile Money ;
+- gardiens actifs ;
+- dernières opérations ;
+- état de l'abonnement ;
+- consommation du quota.
+
+Les informations doivent être actualisées automatiquement lorsque de nouvelles opérations sont enregistrées.
+
+### B. Enregistrement d'un véhicule
+
+Lorsqu'un client arrive au parking, le gardien ouvre la fonction « Enregistrer ».
+
+Il renseigne les informations nécessaires :
+- type de véhicule ;
+- plaque d'immatriculation ;
+- marque ou modèle si connu ;
+- couleur ;
+- nom complet du propriétaire ;
+- numéro de téléphone ;
+- photo du véhicule si l'offre le permet ;
+- parking concerné.
+
+Le système ajoute automatiquement :
+- date et heure d'entrée ;
+- identifiant du gardien ;
+- identifiant du parking ;
+- référence unique de la session.
+
+Le formulaire doit être rapide et simple. Il ne faut pas imposer des informations inutiles qui ralentiraient les opérations.
+
+### C. Création de la session de stationnement
+
+Après validation du formulaire, PARKO crée une session de stationnement.
+
+Cette session possède :
+- un identifiant unique ;
+- un véhicule ;
+- un propriétaire ;
+- un parking ;
+- une heure d'entrée ;
+- un gardien responsable ;
+- un état ;
+- un ticket QR associé.
+
+L'état initial est « En cours ».
+
+### D. Génération du ticket QR
+
+Le système génère automatiquement un QR code lié à la session.
+
+Le QR ne doit pas contenir directement les données personnelles du propriétaire. Il doit contenir une référence sécurisée, imprévisible et vérifiable par le serveur.
+
+Le ticket est accessible :
+- sur l'écran du gardien ;
+- dans le compte du propriétaire lorsque la session lui est associée ;
+- dans l'historique professionnel.
+
+Le gardien peut présenter le ticket au client pour qu'il le conserve sur son téléphone.
+
+Le propriétaire n'a pas besoin de modifier le ticket. Il sert à identifier le stationnement et à faciliter la vérification lors de la récupération du véhicule.
+
+## 8. Le système de scan et de sortie
+
+C'est l'une des fonctions les plus importantes de PARKO.
+
+Lorsqu'un client revient récupérer son véhicule, le gardien ouvre le scanner intégré à l'application.
+
+### Déroulement de la sortie
+
+1. Le client présente son QR code.
+2. Le gardien scanne le QR code.
+3. L'application interroge le serveur pour retrouver la session.
+4. Le système vérifie que le ticket existe et qu'il est encore actif.
+5. Les informations utiles du véhicule et du propriétaire s'affichent.
+6. Le gardien compare les informations avec le véhicule présent physiquement.
+7. Le paiement est vérifié.
+8. Le gardien confirme les opérations autorisées.
+9. Le serveur enregistre la sortie.
+10. La session passe à l'état « Terminée ».
+
+### Résultats possibles du scan
+
+Le scanner peut afficher :
+- ticket valide ;
+- ticket invalide ;
+- ticket déjà utilisé ;
+- véhicule déjà récupéré ;
+- ticket introuvable ;
+- paiement en attente ;
+- paiement confirmé ;
+- vérification de sécurité nécessaire.
+
+Un QR code seul ne suffit jamais à autoriser une sortie. Le gardien doit contrôler le véhicule physiquement et respecter les règles du parking.
+
+### En cas de discordance
+
+Si les informations du ticket ne correspondent pas au véhicule ou à la personne présente, le gardien ne doit pas autoriser automatiquement la sortie.
+
+Il peut signaler un incident et demander une vérification du gestionnaire.
+
+## 9. Récupération d'un véhicule lorsque le QR est perdu
+
+Le client peut perdre son téléphone, supprimer son ticket ou ne plus avoir accès à son QR code.
+
+PARKO doit donc prévoir une procédure alternative.
+
+Le gardien peut rechercher une session active à partir :
+- de la plaque d'immatriculation ;
+- du numéro de téléphone ;
+- d'une référence connue.
+
+Le système doit ensuite afficher les sessions correspondantes et demander une vérification supplémentaire.
+
+Le gardien doit contrôler :
+- l'identité ou les informations du propriétaire ;
+- le véhicule physique ;
+- la cohérence des informations ;
+- les éléments disponibles dans l'historique.
+
+La sortie sans QR doit être enregistrée dans les journaux d'audit avec le gardien responsable et le motif.
+
+Une plaque ou un numéro de téléphone ne doit jamais suffire, à lui seul, à autoriser une sortie.
+
+## 10. Paiements du stationnement
+
+PARKO prend en charge deux grands moyens de paiement.
+
+### A. Paiement en espèces
+
+Le client paie directement le gardien.
+
+Le gardien enregistre le montant reçu et le moyen de paiement.
+
+Le système conserve :
+- montant ;
+- date ;
+- heure ;
+- gardien ;
+- session ;
+- statut du paiement.
+
+### B. Paiement Mobile Money
+
+L'application doit pouvoir intégrer des prestataires adaptés au marché togolais, notamment :
+- Mixx by Yas ;
+- Flooz ;
+- d'autres prestataires disponibles et techniquement compatibles.
+
+Le paiement doit être confirmé par le prestataire ou par une vérification backend fiable.
+
+Un simple clic du gardien ou du client ne doit pas pouvoir transformer un paiement Mobile Money en paiement confirmé.
+
+### C. Statuts des paiements
+
+Chaque opération peut avoir un statut :
+- en attente ;
+- confirmé ;
+- échoué ;
+- annulé ;
+- remboursé.
+
+Le système doit distinguer l'argent réellement confirmé d'un montant simplement saisi par un gardien.
+
+### D. Revenus des parkings
+
+Au lancement, PARKO ne prélève pas de commission sur les frais ordinaires de stationnement.
+
+Les recettes du parking restent celles de son exploitant, sous réserve des éventuels frais des prestataires de paiement qui doivent être clairement présentés.
+
+Les frais d'abonnement PARKO sont séparés des frais payés par les clients pour stationner.
+
+## 11. Gestion des gardiens
+
+Le gestionnaire peut inviter des gardiens à rejoindre son parking.
+
+Chaque gardien dispose de son propre compte et de ses propres identifiants.
+
+Les rôles possibles sont :
+- gestionnaire principal ;
+- superviseur ;
+- gardien.
+
+Les limites dépendent de l'abonnement :
+- Essentiel : 1 gardien ;
+- Standard : jusqu'à 3 gardiens ;
+- Pro : jusqu'à 7 gardiens.
+
+Les gardiens travaillent dans le même environnement professionnel, avec des données partagées selon leurs autorisations.
+
+Chaque opération est attribuée à la personne qui l'a effectuée.
+
+Le gardien peut notamment :
+- enregistrer des véhicules ;
+- générer des tickets ;
+- scanner des tickets ;
+- consulter les véhicules présents ;
+- enregistrer les paiements autorisés ;
+- effectuer les sorties autorisées ;
+- signaler les incidents.
+
+Il ne doit pas pouvoir modifier librement l'abonnement, les paramètres administratifs ou les droits des autres comptes sans autorisation.
+
+## 12. Suivi des performances des gardiens
+
+PARKO permet au gestionnaire de suivre l'activité de chaque gardien.
+
+Les indicateurs peuvent inclure :
+- nombre d'enregistrements valides ;
+- nombre de scans ;
+- nombre de sorties correctement enregistrées ;
+- paiements saisis ;
+- incidents signalés ;
+- respect des procédures ;
+- régularité de l'activité.
+
+Le système peut attribuer des badges :
+- Bronze ;
+- Argent ;
+- Or ;
+- Expert ;
+- Excellence.
+
+Les critères doivent être transparents et configurables.
+
+Le classement ne doit pas reposer uniquement sur le nombre de véhicules enregistrés. La qualité du travail, la fiabilité et le respect des procédures sont également importants.
+
+## 13. Historique et rapports professionnels
+
+Le gestionnaire dispose d'un historique des opérations de son parking.
+
+Il peut retrouver :
+- les entrées ;
+- les sorties ;
+- les véhicules présents ;
+- les paiements ;
+- les incidents ;
+- les gardiens responsables ;
+- les horaires.
+
+Les rapports peuvent présenter :
+- recettes journalières ;
+- recettes hebdomadaires ;
+- recettes mensuelles ;
+- paiements en espèces ;
+- paiements Mobile Money ;
+- nombre de sessions ;
+- revenu moyen ;
+- activité par gardien ;
+- activité par parking.
+
+L'offre Pro permet notamment l'export des données en CSV ou PDF.
+
+Les rapports doivent clairement séparer les paiements confirmés des paiements en attente ou simplement déclarés.
+
+## 14. Gestion des incidents
+
+PARKO doit permettre de signaler les problèmes rencontrés dans le parking.
+
+Exemples :
+- QR code invalide ;
+- QR code déjà utilisé ;
+- perte du ticket ;
+- véhicule non conforme aux informations ;
+- désaccord sur le paiement ;
+- erreur d'enregistrement ;
+- sortie contestée ;
+- incident impliquant un gardien.
+
+Chaque incident doit contenir :
+- type ;
+- description ;
+- date et heure ;
+- parking ;
+- session concernée si applicable ;
+- gardien responsable ;
+- statut de traitement ;
+- décision prise.
+
+Le gestionnaire peut examiner les incidents et l'administration PARKO peut intervenir si nécessaire.
+
+## 15. Super-administration PARKO
+
+PARKO dispose d'un environnement central réservé à l'équipe d'administration de la plateforme.
+
+Cet environnement est séparé de l'espace professionnel des parkings.
+
+Il permet de superviser l'ensemble de l'activité.
+
+### A. Gestion des utilisateurs
+- consulter les comptes ;
+- rechercher un utilisateur ;
+- consulter son statut ;
+- gérer les signalements ;
+- appliquer les mesures autorisées.
+
+### B. Vérification des gestionnaires
+- consulter les candidatures ;
+- vérifier les documents ;
+- consulter les informations du parking ;
+- approuver une demande ;
+- refuser une demande avec motif ;
+- demander des informations complémentaires.
+
+### C. Gestion des parkings
+- consulter les parkings enregistrés ;
+- rechercher par ville ou quartier ;
+- consulter les exploitants ;
+- consulter les gardiens ;
+- suivre l'activité ;
+- suspendre ou réactiver un accès selon les règles.
+
+### D. Abonnements
+- consulter les abonnements ;
+- vérifier les paiements ;
+- gérer les essais ;
+- consulter les quotas ;
+- suivre les renouvellements ;
+- examiner les expirations.
+
+### E. Statistiques nationales
+Le tableau de bord peut présenter :
+- nombre total d'utilisateurs ;
+- nombre de gestionnaires ;
+- nombre de parkings actifs ;
+- nombre de gardiens ;
+- nombre de sessions ;
+- entrées et sorties ;
+- recettes déclarées par les parkings ;
+- abonnements actifs ;
+- revenus d'abonnement de PARKO.
+
+Il faut distinguer les recettes des parkings des revenus générés par les abonnements PARKO.
+
+### F. Sécurité et audit
+L'administration doit pouvoir consulter les opérations sensibles :
+- validation d'une candidature ;
+- modification d'un rôle ;
+- suspension d'un compte ;
+- changement d'abonnement ;
+- opérations de paiement ;
+- sortie exceptionnelle ;
+- consultation ou modification de données sensibles.
+
+Chaque opération administrative importante doit être journalisée.
+
+## 16. Notifications
+
+PARKO doit envoyer des notifications utiles aux différents utilisateurs.
+
+### Pour le propriétaire
+- création d'un ticket ;
+- véhicule enregistré ;
+- stationnement terminé ;
+- reçu disponible ;
+- notification importante liée à son compte.
+
+### Pour le gestionnaire
+- nouveau gardien ;
+- quota bientôt atteint ;
+- abonnement proche de l'expiration ;
+- abonnement expiré ;
+- incident signalé ;
+- rapport disponible.
+
+### Pour le gardien
+- invitation reçue ;
+- accès activé ou suspendu ;
+- information importante du gestionnaire ;
+- notification liée à une opération.
+
+Les notifications doivent être pertinentes et ne pas submerger les utilisateurs.
+
+## 17. Sécurité et protection des données
+
+La sécurité est une composante centrale de PARKO.
+
+Le système doit prévoir :
+- authentification sécurisée ;
+- contrôle des rôles ;
+- autorisations par parking ;
+- séparation des données entre exploitants ;
+- politiques d'accès aux données ;
+- stockage privé des documents d'identité ;
+- QR codes sécurisés ;
+- vérification backend des paiements ;
+- prévention des doubles sorties ;
+- journalisation des opérations ;
+- limitation des tentatives abusives ;
+- validation des données envoyées par les utilisateurs.
+
+Un gestionnaire ne doit jamais accéder aux données d'un autre parking sans autorisation.
+
+Un gardien ne doit pas pouvoir s'attribuer les droits du gestionnaire.
+
+Les opérations critiques, notamment la validation des sorties et les confirmations de paiement, doivent être contrôlées côté serveur.
+
+Aucune clé secrète ou clé d'administration ne doit être exposée dans le navigateur ou l'application cliente.
+
+## 18. Fonctionnement en cas de mauvaise connexion Internet
+
+PARKO doit être optimisé pour les réseaux mobiles parfois instables.
+
+L'application doit :
+- charger rapidement ;
+- limiter la consommation de données ;
+- optimiser les photos ;
+- afficher clairement les erreurs ;
+- éviter les doubles soumissions ;
+- conserver les informations non critiques déjà consultées lorsque cela est possible.
+
+Cependant, une sortie ou un paiement ne doit jamais être présenté comme confirmé si le serveur n'a pas validé l'opération.
+
+En cas de coupure, l'application doit afficher clairement que l'opération est en attente de vérification.
+
+La synchronisation éventuelle doit éviter de créer deux sessions ou deux paiements pour une seule opération.
+
+## 19. Principaux écrans de l'application
+
+### Écrans communs
+1. Splash screen.
+2. Bienvenue.
+3. Inscription.
+4. Connexion.
+5. Récupération du mot de passe.
+6. Vérification du compte.
+7. Notifications.
+8. Profil.
+9. Paramètres.
+
+### Espace personnel
+1. Accueil personnel.
+2. Mes véhicules.
+3. Ajouter un véhicule.
+4. Détails du véhicule.
+5. Mes tickets QR.
+6. Détails du ticket.
+7. Historique.
+8. Détails d'un stationnement.
+9. Paiements.
+10. Reçus.
+11. Devenir gestionnaire.
+12. Formulaire de candidature.
+13. Suivi de candidature.
+14. Choix de l'abonnement.
+
+### Espace professionnel
+1. Tableau de bord.
+2. Enregistrer un véhicule.
+3. Choix du type de véhicule.
+4. Formulaire d'enregistrement.
+5. Prise de photo.
+6. Ticket QR généré.
+7. Scanner QR.
+8. Résultat du scan.
+9. Vérification du véhicule.
+10. Vérification du paiement.
+11. Validation de sortie.
+12. Véhicules présents.
+13. Historique des sessions.
+14. Détails d'une session.
+15. Paiements.
+16. Gestion des gardiens.
+17. Invitation d'un gardien.
+18. Profil d'un gardien.
+19. Performances et badges.
+20. Incidents.
+21. Rapports.
+22. Abonnement.
+23. Paramètres professionnels.
+
+### Super-administration
+1. Dashboard national.
+2. Utilisateurs.
+3. Candidatures.
+4. Détails d'une candidature.
+5. Vérification des documents.
+6. Parkings.
+7. Gestionnaires.
+8. Gardiens.
+9. Abonnements.
+10. Paiements.
+11. Statistiques.
+12. Incidents.
+13. Sécurité.
+14. Journaux d'audit.
+15. Paramètres de la plateforme.
+
+## 20. Architecture technique indicative
+
+Avant toute modification technique, il faut examiner le dépôt existant et conserver les éléments déjà fonctionnels.
+
+Si le projet n'a pas encore de stack technique définie, une architecture possible est :
+- application web mobile-first ou PWA ;
+- Next.js ;
+- TypeScript ;
+- Tailwind CSS ;
+- Supabase Auth ;
+- Supabase PostgreSQL ;
+- Supabase Storage ;
+- politiques RLS ;
+- fonctions backend pour les opérations sensibles.
+
+Les données peuvent être organisées autour des entités suivantes :
+- profiles ;
+- user_roles ;
+- manager_applications ;
+- parking_operators ;
+- parking_locations ;
+- parking_attendants ;
+- vehicles ;
+- parking_sessions ;
+- qr_tickets ;
+- payments ;
+- subscription_plans ;
+- subscriptions ;
+- subscription_usage ;
+- performance_metrics ;
+- achievement_badges ;
+- attendant_badges ;
+- incidents ;
+- notifications ;
+- audit_logs.
+
+Les relations entre les tables doivent garantir la cohérence des données. Les opérations sensibles doivent être atomiques et contrôlées côté serveur.
+
+## 21. Principes de conception de l'interface
+
+L'identité visuelle de PARKO repose sur :
+- vert émeraude ;
+- noir charbon ;
+- blanc ;
+- gris clair.
+
+Le vert représente les validations et les opérations réussies. L'ambre signale les avertissements. Le rouge est réservé aux erreurs et aux blocages.
+
+L'interface doit être :
+- moderne ;
+- professionnelle ;
+- claire ;
+- minimaliste ;
+- mobile-first ;
+- facile à comprendre ;
+- adaptée aux smartphones Android d'entrée de gamme.
+
+La navigation des gardiens doit mettre en évidence les quatre actions principales :
+- Accueil ;
+- Enregistrer ;
+- Scanner ;
+- Historique.
+
+Il faut éviter les écrans trop chargés et les étapes inutiles.
+
+## 22. Règles fondamentales à respecter
+
+1. PARKO est une seule application avec un espace personnel et un espace professionnel.
+2. Tout le monde commence comme utilisateur ordinaire.
+3. L'accès professionnel nécessite une candidature approuvée et un abonnement actif, ou un essai gratuit valide.
+4. Les gardiens ont des comptes individuels.
+5. Chaque session de stationnement possède un QR code unique.
+6. Le QR code ne doit pas exposer directement les données personnelles.
+7. Un QR code seul ne suffit pas à autoriser une sortie.
+8. Les paiements Mobile Money doivent être confirmés côté serveur.
+9. Les quotas concernent les nouvelles sessions, pas les scans répétés d'un ticket actif.
+10. Les véhicules déjà stationnés doivent pouvoir sortir même en cas d'expiration de l'abonnement.
+11. Les données historiques ne doivent pas disparaître à l'expiration d'un abonnement.
+12. Chaque opération importante doit être attribuée à son auteur.
+13. Les documents d'identité restent privés.
+14. Chaque parking ne peut accéder qu'à ses propres données.
+15. Les recettes des parkings sont distinctes des revenus d'abonnement de PARKO.
+16. Les opérations critiques ne doivent jamais être faussement confirmées hors ligne.
+
+## 23. Objectif final
+
+PARKO doit devenir une plateforme de référence pour la gestion numérique des parkings.
+
+L'application doit faciliter le travail des gardiens, rassurer les propriétaires de véhicules, donner aux gestionnaires une vision claire de leur activité et permettre à l'équipe PARKO de superviser le réseau de parkings.
+
+Le résultat attendu est un système cohérent, sécurisé, rapide et facile à utiliser, dans lequel chaque véhicule, chaque session, chaque paiement et chaque sortie peuvent être retrouvés et vérifiés.

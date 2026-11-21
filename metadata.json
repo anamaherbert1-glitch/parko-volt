@@ -1,0 +1,6 @@
+{
+  "name": "PARKO",
+  "description": "Application de gestion et de sécurisation des parkings : espace personnel (véhicules, tickets QR, historique, paiements) et espace professionnel (gardien, scanner QR, gestionnaire, abonnements).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
